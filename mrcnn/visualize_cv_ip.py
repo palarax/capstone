@@ -72,6 +72,7 @@ if __name__ == '__main__':
     import os
     import coco
     import model as modellib
+    import urllib.request as urllib2 # IP capture
 
     ROOT_DIR = os.getcwd()
     MODEL_DIR = os.path.join(ROOT_DIR, "logs")
@@ -79,7 +80,7 @@ if __name__ == '__main__':
 
     class InferenceConfig(coco.CocoConfig):
         GPU_COUNT = 1
-        IMAGES_PER_GPU = 2
+        IMAGES_PER_GPU = 1
 
     config = InferenceConfig()
     config.display()
@@ -105,29 +106,38 @@ if __name__ == '__main__':
                    'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors',
                    'teddy bear', 'hair drier', 'toothbrush']
 
-    capture = cv2.VideoCapture("road.mp4")  # using web cam
-    # capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    # capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1920)
+    # Block for IP Streaming
 
-    # only activate whilst the video is available
+    url = "10.0.0.34:8080"
+    link = 'http://' + url + '/video'
+    print('Streaming from: ' + link)
+    ctr = 0
+    stream = urllib2.urlopen(link)
+    bytes = bytes()
+
+    # Read until video is completed
     while True:
-        return_value, frame = capture.read()
+        bytes += stream.read(1024)
+        a = bytes.find(b'\xff\xd8')
+        b = bytes.find(b'\xff\xd9')
+        if a != -1 and b != -1:
 
-        results = model.detect([frame], verbose=0)  # boxes, labels, etc
+            #start = time.time()
+            ctr += 1
+            jpg = bytes[a:b+2]
+            bytes = bytes[b+2:]
 
-        r = results[0]  # first thing in results ??
+            frame = cv2.imdecode(np.fromstring(
+                jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
 
-        frame = display_instances(
+            results = model.detect([frame], verbose=0)  # boxes, labels, etc
+            r = results[0]  # first thing in results ??
+            frame = display_instances(
+                frame, r['rois'], r['masks'], r['class_ids'], class_names, r['scores']
+            )
 
-            frame, r['rois'], r['masks'], r['class_ids'], class_names, r['scores']
-        )
+            cv2.imshow('frame', frame)  # display frame
 
-        cv2.imshow('frame', frame)  # display frame
-
-        # Kill window
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    # cleanup
-    capture.release()
-    cv2.destroyAllWindows()
+            # Kill window
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
