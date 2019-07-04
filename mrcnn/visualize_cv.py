@@ -20,8 +20,8 @@ def apply_mask(image, mask, color, alpha=0.5):
     for n, c in enumerate(color):
         image[:, :, n] = np.where(
             mask == 1,
-            image[:, :, c] * (1 - alpha) + alpha * c,
-            image[:, :, c]
+            image[:, :, n] * (1 - alpha) + alpha * c,
+            image[:, :, n]
         )
     return image
 
@@ -56,7 +56,7 @@ def display_instances(image, boxes, masks, ids, names, scores):
         image = cv2.rectangle(image, (x_1, y_1), (x_2, y_2), color, 2)
         label = names[ids[i]]
         score = scores[i] if scores is not None else None
-        caption = '{} {:.2f}'.format(label, scores) if score else label
+        caption = '{} {:.2f}'.format(label, score) if score else label
         image = cv2.putText(
             image, caption, (x_1, y_1), cv2.FONT_HERSHEY_COMPLEX, 0.7, color, 2
         )
@@ -101,13 +101,14 @@ if __name__ == '__main__':
                    'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors',
                    'teddy bear', 'hair drier', 'toothbrush']
 
-    capture = cv2.VideoCapture(0) # using web cam
+    capture = cv2.VideoCapture("road.mp4") # using web cam
     # capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     # capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1920)
 
     # only activate whilst the video is available
-    while True: 
-        ret, frame = capture.read()
+    while True:
+        return_value, frame = capture.read()
+
         results = model.detect([frame], verbose=0) # boxes, labels, etc
 
         r = results[0] # first thing in results ??

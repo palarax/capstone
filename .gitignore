@@ -56,3 +56,7 @@ pip-delete-this-directory.txt
 .venv
 venv/
 ENV/
+
+
+# dataset files
+*.mp4
