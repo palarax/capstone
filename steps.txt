@@ -1,0 +1,3 @@
+Read images
+Pass image to model.detect (->results, scores, masks)
+Pass results to Visualize to plot
