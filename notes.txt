@@ -1,3 +1,7 @@
+## Amazing guides
+https://course.fast.ai/start_aws.html
+
+
 Cheeky guide
 https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46
 
@@ -9,3 +13,10 @@ https://arxiv.org/pdf/1801.08234.pdf
 https://arxiv.org/pdf/1809.04288.pdf
 https://link.springer.com/chapter/10.1007/978-3-319-59147-6_21
 https://www.researchgate.net/publication/317801679_Recognizing_Pedestrian_Direction_Using_Convolutional_Neural_Networks
+
+
+# Picking models
+Pick smaller models, as larger models can overfit training data. 
+Important thing to consider is "Validation Loss". Keeping it small, yet closer to training loss is tricky and may need 
+some regularization like DropOut or WeightDecay etc.
+Minimumum of 20 images per class

@@ -1,6 +1,26 @@
 import cv2
 import numpy as np
 
+CLASS_NAMES = ['BG', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
+               'bus', 'train', 'truck', 'boat', 'traffic light',
+               'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird',
+               'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear',
+               'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie',
+               'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
+               'kite', 'baseball bat', 'baseball glove', 'skateboard',
+               'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
+               'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
+               'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
+               'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
+               'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
+               'keyboard', 'cell phone', 'microwave', 'oven', 'toaster',
+               'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors',
+               'teddy bear', 'hair drier', 'toothbrush']
+
+# each class has a consistent color using (dict comprehension)
+class_colors = random_colors(len(CLASS_NAMES))
+CLASS_DICT = {name: color for name, color in zip(CLASS_NAMES, class_colors)}
+
 
 def random_colors(n):
     """
@@ -44,8 +64,6 @@ def display_instances(image, boxes, masks, ids, names, scores):
         assert boxes.shape[0] == masks.shape[-1] == ids.shape[0]
 
     colors = random_colors(n_instances)
-    # height, width = image.shape[:2] # what is this
-
     for i, color in enumerate(colors):
         if not np.any(boxes[i]):
             continue  # continue if no boxes found
@@ -58,6 +76,7 @@ def display_instances(image, boxes, masks, ids, names, scores):
         image = cv2.rectangle(image, (x_1, y_1), (x_2, y_2), color, 2)
 
         label = names[ids[i]]
+        color = CLASS_DICT[label]  # consisten color implementation
         score = scores[i] if scores is not None else None
         caption = '{} {:.2f}'.format(label, score) if score else label
         image = cv2.putText(
@@ -89,22 +108,6 @@ if __name__ == '__main__':
     )
     model.load_weights(COCO_MODEL_PATH, by_name=True)
 
-    class_names = ['BG', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
-                   'bus', 'train', 'truck', 'boat', 'traffic light',
-                   'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird',
-                   'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear',
-                   'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie',
-                   'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
-                   'kite', 'baseball bat', 'baseball glove', 'skateboard',
-                   'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
-                   'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
-                   'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
-                   'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
-                   'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
-                   'keyboard', 'cell phone', 'microwave', 'oven', 'toaster',
-                   'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors',
-                   'teddy bear', 'hair drier', 'toothbrush']
-
     capture = cv2.VideoCapture("road.mp4")  # using web cam
     # capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     # capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1920)
@@ -115,11 +118,11 @@ if __name__ == '__main__':
 
         results = model.detect([frame], verbose=0)  # boxes, labels, etc
 
-        r = results[0]  # first thing in results ??
+        r = results[0]  # striping result
 
+        # return frame with mask
         frame = display_instances(
-
-            frame, r['rois'], r['masks'], r['class_ids'], class_names, r['scores']
+            frame, r['rois'], r['masks'], r['class_ids'], CLASS_NAMES, r['scores']
         )
 
         cv2.imshow('frame', frame)  # display frame
