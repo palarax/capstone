@@ -1,10 +1,17 @@
 # Data files and directories common in repo root
 datasets/
 logs/
-*.h5
 results/
 temp/
 test/
+
+# ignore large assets
+*.mp4
+
+# ignore large models
+*.h5
+*.weights
+*.pt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

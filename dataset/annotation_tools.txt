@@ -1,0 +1,8 @@
+
+https://towardsdatascience.com/how-to-collect-your-deep-learning-dataset-2e0eefc0ba24
+
+https://www.cityscapes-dataset.com/registration-successful/
+
+https://github.com/fidler-lab/polyrnn-pp
+
+https://github.com/scaelles/DEXTR-KerasTensorflow
