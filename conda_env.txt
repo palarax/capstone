@@ -1,0 +1,10 @@
+
+conda install -c anaconda keras-gpu
+conda install -c conda-forge opencv
+conda install -c conda-forge numpy
+conda install -c anaconda pandas
+
+# PIL
+conda install -c anaconda pillow
+
+conda install -c conda-forge tensorboard

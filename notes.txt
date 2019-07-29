@@ -14,3 +14,11 @@ https://www.researchgate.net/publication/317801679_Recognizing_Pedestrian_Direct
 Look for people taking photos
 People calling
 Tourists
+
+
+
+    # https://www.kaggle.com/venuraja79/using-transfer-learning-with-keras
+    # https://www.pyimagesearch.com/2019/05/20/transfer-learning-with-keras-and-deep-learning/
+    # defineModel(5)
+    # https://towardsdatascience.com/transfer-learning-and-image-classification-using-keras-on-kaggle-kernels-c76d3b030649
+    # https://www.pyimagesearch.com/2018/05/07/multi-label-classification-with-keras/
