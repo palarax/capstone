@@ -8,6 +8,7 @@ import logging
 
 import tensorflow as tf
 import keras
+from keras import backend as K
 
 from keras.models import load_model
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
@@ -17,9 +18,16 @@ from yolo.yolo import create_yolov3_model, dummy_loss
 from yolo.callbacks import CustomModelCheckpoint, CustomTensorBoard
 from yolo.generator import BatchGenerator
 
-from yolo.utils.utils import normalize, evaluate, makedirs
+from yolo.utils.util import normalize, evaluate, makedirs
 from yolo.utils.multi_gpu_model import multi_gpu_model
 from yolo.voc import parse_voc_annotation # TODO: fix this as it isn't using voc
+
+
+# Initialize GPU
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.Session(config=config)
 
 # Initialize logger
 logger = None
@@ -69,14 +77,14 @@ def create_training_instances(
         valid_ints, valid_labels = parse_voc_annotation(valid_annot_folder, valid_image_folder, valid_cache, labels)
     else:
         print("valid_annot_folder not exists. Spliting the trainining set.")
-        train_ints, valid_ints = manual_split(train_ints, train_labels)
-        # train_valid_split = int(0.8*len(train_ints))
-        # np.random.seed(0)
-        # np.random.shuffle(train_ints)
-        # np.random.seed()
+        # train_ints, valid_ints = manual_split(train_ints, train_labels)
+        train_valid_split = int(0.8*len(train_ints))
+        np.random.seed(0)
+        np.random.shuffle(train_ints)
+        np.random.seed()
 
-        # valid_ints = train_ints[train_valid_split:]
-        # train_ints = train_ints[:train_valid_split]
+        valid_ints = train_ints[train_valid_split:]
+        train_ints = train_ints[:train_valid_split]
 
     # compare the seen labels with the given labels in config.json
     if len(labels) > 0:
@@ -218,13 +226,14 @@ def setup_logger(log, filename, loglevel, format, dtfmt):
     logger.addHandler(ch)
     
     # create file handler
-    fh = logging.FileHandler("{0}.log".format(fileName))
+    fh = logging.FileHandler(filename)
     fh.setLevel(level=numeric_level)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
 
 def _main_(args):
+    
     config_path = args.conf
 
     with open(config_path) as config_buffer:
@@ -234,8 +243,12 @@ def _main_(args):
     #   Setup logger
     ###############################
     # TODO: replace prints with logger
-    setup_logger(confg["logger"]["logger"], confg["logger"]["filename"], )
-    logger.setLevel(logging.DEBUG)
+    setup_logger(
+        config["logger"]["logger"], 
+        config["logger"]["filename"],
+        config["logger"]["level"],
+        config["logger"]["format"],
+        config["logger"]["datefmt"])
 
     ###############################
     #   Parse the annotations
@@ -329,8 +342,8 @@ def _main_(args):
         epochs=config['train']['nb_epochs'] + config['train']['warmup_epochs'],
         verbose=2 if config['train']['debug'] else 1,
         callbacks=callbacks,
-        workers=4,
-        max_queue_size=8
+        # workers=4,
+        max_queue_size=4
     )
 
     # make a GPU version of infer_model for evaluation

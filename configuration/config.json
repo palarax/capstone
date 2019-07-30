@@ -1,7 +1,7 @@
 {
     "logger": {
         "logger": "trainer",
-        "filename": "log/test.log",
+        "filename": "logs/test.log",
         "level": "DEBUG",
         "format": "%(asctime)s %(levelname)s:%(message)s",
         "datefmt": "%Y-%m-%d %H:%M:%S"
@@ -11,7 +11,7 @@
         "min_input_size":       288,
         "max_input_size":       448,
         "anchors":              [23,93, 47,171, 65,277, 92,345, 96,199, 114,262, 134,365, 186,365, 261,354],
-        "labels": ["pedestrian_bb", "cyclist_bb", "facing_back_bb", "on-call_bb", "on-mobile_bb"]
+        "labels": ["pedestrian_bb", "cyclist_bb", "on-call_bb", "on-mobile_bb"]
     },
 
     "train": {
@@ -20,12 +20,12 @@
         "cache_name":           "train.pkl",
 
         "train_times":          8,
-        "batch_size":           8,
+        "batch_size":           2,
         "learning_rate":        1e-4,
-        "nb_epochs":            30,
+        "nb_epochs":            50,
         "warmup_epochs":        3,
         "ignore_thresh":        0.5,
-        "gpus":                 "1",
+        "gpus":                 "0",
 
         "grid_scales":          [1,1,1],
         "obj_scale":            5,

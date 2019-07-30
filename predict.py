@@ -4,13 +4,13 @@ import os
 import argparse
 import json
 import cv2
-from yolo.utils.utils import get_yolo_boxes, makedirs
+from yolo.utils.util import get_yolo_boxes, makedirs
 from yolo.utils.bbox import draw_boxes
 from keras.models import load_model
 from tqdm import tqdm
 import numpy as np
 
-from yolo import create_yolov3_model
+from yolo.yolo import create_yolov3_model
 
 def _main_(args):
     config_path  = args.conf

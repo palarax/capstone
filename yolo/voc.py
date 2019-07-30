@@ -42,6 +42,9 @@ def _parse(ann_dir, img_dir, all_insts, seen_labels, labels=LABELS):
                 obj = {}
                 points = obje["points"]["exterior"]
                 obj['name'] = obje["classTitle"]
+                if obj['name'] == 'facing_back_bb':
+                    continue #skip
+
                 if obj['name'] in seen_labels:
                     seen_labels[obj['name']] += 1
                 else:
@@ -52,7 +55,8 @@ def _parse(ann_dir, img_dir, all_insts, seen_labels, labels=LABELS):
                 obj['ymax'] = int(round(float(points[1][1])))
                 img['object'] += [obj]
             
-            all_insts += [img]   
+            if len(img['object']) > 0:
+                all_insts += [img]   
                         
     # return all_insts, seen_labels
 

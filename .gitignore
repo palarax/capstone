@@ -1,5 +1,5 @@
 # Data files and directories common in repo root
-datasets/
+dataset/
 logs/
 results/
 temp/
@@ -7,6 +7,7 @@ test/
 
 # ignore large assets
 *.mp4
+*.pkl
 
 # ignore large models
 *.h5

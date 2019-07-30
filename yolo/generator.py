@@ -1,9 +1,15 @@
 import cv2
 import copy
 import numpy as np
+try:
+    from utils.bbox import BoundBox, bbox_iou
+    from utils.image import apply_random_scale_and_crop, random_distort_image, random_flip, correct_bounding_boxes
+except ImportError:
+    from yolo.utils.bbox import BoundBox, bbox_iou
+    from yolo.utils.image import apply_random_scale_and_crop, random_distort_image, random_flip, correct_bounding_boxes
+
+
 from keras.utils import Sequence
-from utils.bbox import BoundBox, bbox_iou
-from utils.image import apply_random_scale_and_crop, random_distort_image, random_flip, correct_bounding_boxes
 
 class BatchGenerator(Sequence):
     def __init__(self, 

@@ -10,11 +10,8 @@ https://arxiv.org/pdf/1809.04288.pdf
 https://link.springer.com/chapter/10.1007/978-3-319-59147-6_21
 https://www.researchgate.net/publication/317801679_Recognizing_Pedestrian_Direction_Using_Convolutional_Neural_Networks
 
-## ideas
-Look for people taking photos
-People calling
-Tourists
-
+YOLOv3
+https://medium.com/@manivannan_data/how-to-train-yolov3-to-detect-custom-objects-ccbcafeb13d2
 
 
     # https://www.kaggle.com/venuraja79/using-transfer-learning-with-keras
