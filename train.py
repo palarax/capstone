@@ -6,209 +6,31 @@ import numpy as np
 import json
 import logging
 
+# KERAS
 import tensorflow as tf
-import keras
-from keras import backend as K
-
-from keras.models import load_model
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+import keras.backend as K
+import h5py  # for saving model
+from keras.layers import Input, Lambda
+from keras.models import Model
 from keras.optimizers import Adam
+from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 
-from yolo.yolo import create_yolov3_model, dummy_loss
-from yolo.callbacks import CustomModelCheckpoint, CustomTensorBoard
-from yolo.generator import BatchGenerator
+# YOLO model
+from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss
+from yolo3.utils import get_random_data
 
-from yolo.utils.util import normalize, evaluate, makedirs
-from yolo.utils.multi_gpu_model import multi_gpu_model
-from yolo.voc import parse_voc_annotation # TODO: fix this as it isn't using voc
+from keras.utils import plot_model  # plot model
 
 
 # Initialize GPU
 from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
-sess = tf.Session(config=config)
+sess = tf.compat.v1.Session(config=config)
 
 # Initialize logger
 logger = None
 
-def manual_split(train_ints, train_labels, TRN_MAX=80):
-    """
-    Manually split dataset
-    """
-    label_count = {}
-    valid = []
-    train = []
-    for img in train_ints:
-        valid_img = {'object': [], 'filename': img["filename"], 'width': img["width"], 'height': img["height"]}
-        train_img = {'object': [], 'filename': img["filename"], 'width': img["width"], 'height': img["height"]}
-
-        for obj in img["object"]:
-            title = obj["name"]
-            if title not in label_count:
-                label_count[title] = 1
-            elif label_count[title] < TRN_MAX:
-                    label_count[title] += 1
-                    train_img['object'] += [obj]
-            else:
-                valid_img['object'] += [obj]
-
-        if len(train_img['object']) > 0:
-            train += [train_img]
-
-        if len(valid_img['object']) > 0:
-            valid += [valid_img]
-    print("[INFO] {}".format(label_count))
-    return train, valid
-
-def create_training_instances(
-    train_annot_folder,
-    train_image_folder,
-    train_cache,
-    valid_annot_folder,
-    valid_image_folder,
-    valid_cache,
-    labels):
-    # parse annotations of the training set
-    train_ints, train_labels = parse_voc_annotation(train_annot_folder, train_image_folder, train_cache, labels)
-
-    # parse annotations of the validation set, if any, otherwise split the training set
-    if os.path.exists(valid_annot_folder):
-        valid_ints, valid_labels = parse_voc_annotation(valid_annot_folder, valid_image_folder, valid_cache, labels)
-    else:
-        print("valid_annot_folder not exists. Spliting the trainining set.")
-        # train_ints, valid_ints = manual_split(train_ints, train_labels)
-        train_valid_split = int(0.8*len(train_ints))
-        np.random.seed(0)
-        np.random.shuffle(train_ints)
-        np.random.seed()
-
-        valid_ints = train_ints[train_valid_split:]
-        train_ints = train_ints[:train_valid_split]
-
-    # compare the seen labels with the given labels in config.json
-    if len(labels) > 0:
-        overlap_labels = set(labels).intersection(set(train_labels.keys()))
-
-        print('Seen labels: \t' + str(train_labels) + '\n')
-        print('Given labels: \t' + str(labels))
-
-        # return None, None, None if some given label is not in the dataset
-        if len(overlap_labels) < len(labels):
-            print(
-                'Some labels have no annotations! Please revise the list of labels in the config.json.')
-            return None, None, None
-    else:
-        print('No labels are provided. Train on all seen labels.')
-        print(train_labels)
-        labels = train_labels.keys()
-
-    max_box_per_image = max([len(inst['object']) for inst in (train_ints + valid_ints)])
-
-    return train_ints, valid_ints, sorted(labels), max_box_per_image
-
-def create_callbacks(saved_weights_name, tensorboard_logs, model_to_save):
-    makedirs(tensorboard_logs)
-
-    early_stop = EarlyStopping(
-        monitor='loss',
-        min_delta=0.01,
-        patience=5,
-        mode='min',
-        verbose=1
-    )
-    checkpoint = CustomModelCheckpoint(
-        model_to_save=model_to_save,
-        filepath=saved_weights_name,  # + '{epoch:02d}.h5',
-        monitor='loss',
-        verbose=1,
-        save_best_only=True,
-        mode='min',
-        period=1
-    )
-    reduce_on_plateau = ReduceLROnPlateau(
-        monitor='loss',
-        factor=0.1,
-        patience=2,
-        verbose=1,
-        mode='min',
-        epsilon=0.01,
-        cooldown=0,
-        min_lr=0
-    )
-    tensorboard = CustomTensorBoard(
-        log_dir=tensorboard_logs,
-        write_graph=True,
-        write_images=True,
-    )
-    return [early_stop, checkpoint, reduce_on_plateau, tensorboard]
-
-def create_model(
-    nb_class,
-    anchors,
-    max_box_per_image,
-    max_grid, batch_size,
-    warmup_batches,
-    ignore_thresh,
-    multi_gpu,
-    saved_weights_name,
-    lr,
-    grid_scales,
-    obj_scale,
-    noobj_scale,
-    xywh_scale,
-    class_scale):
-    if multi_gpu > 1:
-        with tf.device('/cpu:0'):
-            template_model, infer_model = create_yolov3_model(
-                nb_class=nb_class,
-                anchors=anchors,
-                max_box_per_image=max_box_per_image,
-                max_grid=max_grid,
-                batch_size=batch_size//multi_gpu,
-                warmup_batches=warmup_batches,
-                ignore_thresh=ignore_thresh,
-                grid_scales=grid_scales,
-                obj_scale=obj_scale,
-                noobj_scale=noobj_scale,
-                xywh_scale=xywh_scale,
-                class_scale=class_scale
-            )
-    else:
-        template_model, infer_model = create_yolov3_model(
-            nb_class=nb_class,
-            anchors=anchors,
-            max_box_per_image=max_box_per_image,
-            max_grid=max_grid,
-            batch_size=batch_size,
-            warmup_batches=warmup_batches,
-            ignore_thresh=ignore_thresh,
-            grid_scales=grid_scales,
-            obj_scale=obj_scale,
-            noobj_scale=noobj_scale,
-            xywh_scale=xywh_scale,
-            class_scale=class_scale
-        )
-
-    # load the pretrained weight if exists, otherwise load the backend weight only
-    if os.path.exists(saved_weights_name):
-        print("[INFO] Loading pretrained weights.")
-        template_model.load_weights(saved_weights_name)
-    else:
-        print("[INFO] Backend weights.")
-        template_model.load_weights("backend.h5", by_name=True)
-
-    if multi_gpu > 1:
-        train_model = multi_gpu_model(template_model, gpus=multi_gpu)
-    else:
-        train_model= template_model
-
-    optimizer = Adam(lr=lr, clipnorm=0.001)
-    train_model.compile(
-        loss=dummy_loss, optimizer=optimizer, metrics=['accuracy'])
-    # train_model.compile(loss=dummy_loss, optimizer=optimizer)
-
-    return train_model, infer_model
 
 def setup_logger(log, filename, loglevel, format, dtfmt):
     """Configure logger
@@ -217,14 +39,15 @@ def setup_logger(log, filename, loglevel, format, dtfmt):
     # Set Log Level and format
     numeric_level = getattr(logging, loglevel.upper(), None)
     logger.setLevel(level=numeric_level)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # create console handler
     ch = logging.StreamHandler()
     ch.setLevel(level=numeric_level)
     ch.setFormatter(formatter)
     logger.addHandler(ch)
-    
+
     # create file handler
     fh = logging.FileHandler(filename)
     fh.setLevel(level=numeric_level)
@@ -232,10 +55,80 @@ def setup_logger(log, filename, loglevel, format, dtfmt):
     logger.addHandler(fh)
 
 
-def _main_(args):
-    
-    config_path = args.conf
+def create_model(input_shape, anchors, num_classes, load_pretrained=True, freeze_body=2,
+                 weights_path='model_data/yolo_weights.h5'):
+    '''create the training model'''
+    K.clear_session()  # get a new session
+    image_input = Input(shape=(None, None, 3))
+    h, w = input_shape
+    num_anchors = len(anchors)
 
+    # y_true = [Input(shape=(416//{0:32, 1:16, 2:8}[l], 416//{0:32, 1:16, 2:8}[l], 9//3, 80+5)) for l in range(3)]
+    y_true = [Input(shape=(h//{0: 32, 1: 16, 2: 8}[l], w//{0: 32, 1: 16, 2: 8}[
+                    l], num_anchors//3, num_classes+5)) for l in range(3)]
+
+    model_body = yolo_body(image_input, num_anchors//3, num_classes)
+    print('[INFO] Create YOLOv3 model with {} anchors and {} classes.'.format(
+        num_anchors, num_classes))
+
+    if load_pretrained:
+        print('[INFO] Load weights {}.'.format(weights_path))
+        model_body.load_weights(weights_path, by_name=True, skip_mismatch=True)
+        if freeze_body in [1, 2]:
+            # Freeze darknet53 body or freeze all but 3 output layers.
+            num = (185, len(model_body.layers)-3)[freeze_body-1]
+            for i in range(num):
+                model_body.layers[i].trainable = False
+            print('[INFO] Freeze the first {} layers of total {} layers.'.format(
+                num, len(model_body.layers)))
+
+    model_loss = Lambda(yolo_loss, output_shape=(1,), name='yolo_loss',
+                        arguments={'anchors': anchors, 'num_classes': num_classes, 'ignore_thresh': 0.5})(
+        [*model_body.output, *y_true])
+    model = Model([model_body.input, *y_true], model_loss)
+    # print('[INFO] model_body.input: ', model_body.input)
+    # print('[INFO] model.input: ', model.input)
+
+    return model
+
+
+def create_tiny_model(input_shape, anchors, num_classes, load_pretrained=True, freeze_body=2,
+                      weights_path='model_data/tiny_yolo_weights.h5'):
+    '''create the training model, for Tiny YOLOv3'''
+    K.clear_session()  # get a new session
+    image_input = Input(shape=(None, None, 3))
+    h, w = input_shape
+    num_anchors = len(anchors)
+
+    y_true = [Input(shape=(h//{0: 32, 1: 16}[l], w//{0: 32, 1: 16}[l],
+                           num_anchors//2, num_classes+5)) for l in range(2)]
+
+    model_body = tiny_yolo_body(image_input, num_anchors//2, num_classes)
+    print('Create Tiny YOLOv3 model with {} anchors and {} classes.'.format(
+        num_anchors, num_classes))
+
+    if load_pretrained:
+        model_body.load_weights(weights_path, by_name=True, skip_mismatch=True)
+        print('Load weights {}.'.format(weights_path))
+        if freeze_body in [1, 2]:
+            # Freeze the darknet body or freeze all but 2 output layers.
+            num = (20, len(model_body.layers)-2)[freeze_body-1]
+            for i in range(num):
+                model_body.layers[i].trainable = False
+            print('Freeze the first {} layers of total {} layers.'.format(
+                num, len(model_body.layers)))
+
+    model_loss = Lambda(yolo_loss, output_shape=(1,), name='yolo_loss',
+                        arguments={'anchors': anchors, 'num_classes': num_classes, 'ignore_thresh': 0.7})(
+        [*model_body.output, *y_true])
+    model = Model([model_body.input, *y_true], model_loss)
+
+    return model
+
+
+def _main_(args):
+
+    config_path = args.conf
     with open(config_path) as config_buffer:
         config = json.loads(config_buffer.read())
 
@@ -244,128 +137,60 @@ def _main_(args):
     ###############################
     # TODO: replace prints with logger
     setup_logger(
-        config["logger"]["logger"], 
+        config["logger"]["logger"],
         config["logger"]["filename"],
         config["logger"]["level"],
         config["logger"]["format"],
         config["logger"]["datefmt"])
 
+    log_dir = config["train"]["tensorboard_dir"]
+    class_names = config["model"]["labels"]
+    num_classes = len(class_names)
+    anchors = np.array(config["model"]["anchors"]).reshape(-1, 2)
+
     ###############################
     #   Parse the annotations
     ###############################
     print("[INFO] Parsing annotations")
-    train_ints, valid_ints, labels, max_box_per_image = create_training_instances(
-        config['train']['train_annot_folder'],
-        config['train']['train_image_folder'],
-        config['train']['cache_name'],
-        config['valid']['valid_annot_folder'],
-        config['valid']['valid_image_folder'],
-        config['valid']['cache_name'],
-        config['model']['labels']
-    )
-    print('[INFO] Training on: \t' + str(labels) + '\n')
 
     ###############################
     #   Create the generators
     ###############################
     print("[INFO] Creating Training Generators")
-    train_generator = BatchGenerator(
-        instances=train_ints,
-        anchors=config['model']['anchors'],
-        labels=labels,
-        downsample=32,  # ratio between network input's size and network output's size, 32 for YOLOv3
-        max_box_per_image=max_box_per_image,
-        batch_size=config['train']['batch_size'],
-        min_net_size=config['model']['min_input_size'],
-        max_net_size=config['model']['max_input_size'],
-        shuffle=True,
-        jitter=0.3,
-        norm=normalize
-    )
 
     print("[INFO] Creating Validation Generators")
-    valid_generator = BatchGenerator(
-        instances=valid_ints,
-        anchors=config['model']['anchors'],
-        labels=labels,
-        downsample=32,  # ratio between network input's size and network output's size, 32 for YOLOv3
-        max_box_per_image=max_box_per_image,
-        batch_size=config['train']['batch_size'],
-        min_net_size=config['model']['min_input_size'],
-        max_net_size=config['model']['max_input_size'],
-        shuffle=True,
-        jitter=0.0,
-        norm=normalize
-    )
 
     ###############################
     #   Create the model
     ###############################
     print("[INFO] Creating Model")
-    if os.path.exists(config['train']['saved_weights_name']):
-        config['train']['warmup_epochs'] = 0
-    warmup_batches= config['train']['warmup_epochs'] * (config['train']['train_times']*len(train_generator))
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = config['train']['gpus']
-    multi_gpu = len(config['train']['gpus'].split(','))
+    # TODO: figure out what this does
+    input_shape = (416, 416)  # multiple of 32, hw
 
-    train_model, infer_model = create_model(
-        nb_class=len(labels),
-        anchors=config['model']['anchors'],
-        max_box_per_image=max_box_per_image,
-        max_grid=[config['model']['max_input_size'],
-            config['model']['max_input_size']],
-        batch_size=config['train']['batch_size'],
-        warmup_batches=warmup_batches,
-        ignore_thresh=config['train']['ignore_thresh'],
-        multi_gpu=multi_gpu,
-        saved_weights_name=config['train']['saved_weights_name'],
-        lr=config['train']['learning_rate'],
-        grid_scales=config['train']['grid_scales'],
-        obj_scale=config['train']['obj_scale'],
-        noobj_scale=config['train']['noobj_scale'],
-        xywh_scale=config['train']['xywh_scale'],
-        class_scale=config['train']['class_scale'],
-    )
-
+    is_tiny_version = len(anchors) == 6  # default setting
+    if is_tiny_version:
+        model = create_tiny_model(input_shape, anchors, num_classes,
+                                  freeze_body=2, weights_path=config["model"]["weights"])  # 'model_data/tiny_yolo_weights.h5'
+    else:
+        model = create_model(input_shape, anchors, num_classes,
+                             freeze_body=2, weights_path=config["model"]["weights"])  # make sure you know what you freeze
+    # architecture + weights + optimizer state
+    # allows to resume from where you left off
+    # model.save('yolo_model_retrain.hdf5')  # creates a HDF5 file 'my_model.h5'
+    #model.summary()
 
     ###############################
     #   Kick off the training
     ###############################
     print("[INFO] Creatinng Callbacks")
-    callbacks = create_callbacks(config['train']['saved_weights_name'], config['train']['tensorboard_dir'], infer_model)
-
     print("[INFO] Start Training")
-    train_model.fit_generator(
-        generator=train_generator,
-        steps_per_epoch=len(train_generator) * config['train']['train_times'],
-        epochs=config['train']['nb_epochs'] + config['train']['warmup_epochs'],
-        verbose=2 if config['train']['debug'] else 1,
-        callbacks=callbacks,
-        # workers=4,
-        max_queue_size=4
-    )
 
-    # make a GPU version of infer_model for evaluation
-    if multi_gpu > 1:
-        infer_model = load_model(config['train']['saved_weights_name'])
-
-    ###############################
-    #   Run the evaluation
-    ###############################
-    # compute mAP for all the classes
-    print("[INFO] Computing mAP")
-    average_precisions = evaluate(infer_model, valid_generator)
-
-    # print the score
-    for label, average_precision in average_precisions.items():
-        print(labels[label] + ': {:.4f}'.format(average_precision))
-    print('[INFO] mAP: {:.4f}'.format(
-        sum(average_precisions.values()) / len(average_precisions)))
 
 if __name__ == '__main__':
     # TODO: add python logger
-    argparser = argparse.ArgumentParser(description='train and evaluate YOLO_v3 model on any dataset')
+    argparser = argparse.ArgumentParser(
+        description='train and evaluate YOLO_v3 model on any dataset')
     argparser.add_argument('-c', '--conf', help='path to configuration file')
 
     args = argparser.parse_args()

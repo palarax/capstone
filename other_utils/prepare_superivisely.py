@@ -1,8 +1,7 @@
 import os
 import json
 
-LABELS = ["pedestrian_bb", "cyclist_bb",
-          "facing_back_bb", "on-call_bb", "on-mobile_bb"]
+LABELS = ["pedestrian_bb", "cyclist_bb", "on-call_bb", "on-mobile_bb"]
 
 
 def generate_annotation(annotation, img, aFile):
@@ -17,6 +16,8 @@ def generate_annotation(annotation, img, aFile):
     for obj in annot["objects"]:
         # [[left, top], [right, bottom]]
         # [[x1, y1], [x2, y2]]
+        if obj["classTitle"] not in LABELS:
+            continue
         classId = LABELS.index(obj["classTitle"])
         points = obj["points"]["exterior"]  # list of points
         # bbox_w = points[1][0] - points[0][1]
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     
     counter = 0
     aFile = open(os.path.join("../dataset", "annotations.txt"),'w')
-    for d in ["cyclist", "pedestrians_on_phone", "person_backwords"]:
+    for d in ["cyclist", "pedestrians_on_phone", "person_backwords","people_mobile"]:
         annotations_dir = os.path.join(root, d, "ann")
         img_dir = os.path.join(root, d, "img")
 
