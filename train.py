@@ -91,7 +91,6 @@ def create_model(input_shape, anchors, num_classes, load_pretrained=True, freeze
 
     return model
 
-
 def create_tiny_model(input_shape, anchors, num_classes, load_pretrained=True, freeze_body=2,
                       weights_path='model_data/tiny_yolo_weights.h5'):
     '''create the training model, for Tiny YOLOv3'''
@@ -124,7 +123,6 @@ def create_tiny_model(input_shape, anchors, num_classes, load_pretrained=True, f
     model = Model([model_body.input, *y_true], model_loss)
 
     return model
-
 
 def _main_(args):
 
