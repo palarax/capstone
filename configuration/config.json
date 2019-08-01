@@ -11,18 +11,17 @@
         "min_input_size":       288,
         "max_input_size":       448,
         "anchors":              [23,93, 47,171, 65,277, 92,345, 96,199, 114,262, 134,365, 186,365, 261,354],
-        "labels": ["pedestrian_bb", "cyclist_bb", "on-call_bb", "on-mobile_bb"],
-        "weights": "configuration/yolov3_weights.h5"
+        "labels":               ["pedestrian_bb", "cyclist_bb", "on-call_bb", "on-mobile_bb"],
+        "weights":              "configuration/yolov3_weights.h5"
     },
 
     "train": {
-        "train_image_folder":   "/home/palarax/Projects/yolo/keras-yolo3/dataset/images/",
-        "train_annot_folder":   "/home/palarax/Projects/yolo/keras-yolo3/dataset/",
-        "cache_name":           "train.pkl",
+        "train_image_folder":   "dataset/images/train",
+        "annotations":   "dataset/annotations.txt",
         "train_times":          8,
-        "batch_size":           2,
+        "batch_size":           8,
         "learning_rate":        1e-4,
-        "nb_epochs":            50,
+        "epochs":               50,
         "warmup_epochs":        3,
         "ignore_thresh":        0.5,
         "gpus":                 "0",
@@ -33,9 +32,9 @@
         "xywh_scale":           1,
         "class_scale":          1,
 
-        "tensorboard_dir":      "logs/tensorboard",
-        "logs_dir":             "logs",
-        "saved_weights_name":   "out_model.h5",
+        "tensorboard_dir":      "logs/tensorboard/002",
+        "model_stages":         "model_stages/002/",
+        "model_out":            "output/derived_model.h5",
         "debug": false  
     },
 

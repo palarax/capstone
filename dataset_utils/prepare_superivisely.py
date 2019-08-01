@@ -19,17 +19,10 @@ def generate_annotation(annotation, img, aFile):
         # [[x1, y1], [x2, y2]]
         classId = LABELS.index(obj["classTitle"])
         points = obj["points"]["exterior"]  # list of points
-        # bbox_w = points[1][0] - points[0][1]
-        # bbox_h = points[1][1] - points[0][1]
-        # x = (points[0][0] + (bbox_w / 2)) / width
-        # x = (points[0][1] + (bbox_h / 2)) / height
-        # bbox_w = bbox_w / width
-        # bbox_h = bbox_h / height
         info = "%s,%d,%d,%d,%d,%d" % (
             img, points[0][0], points[0][1], points[1][0], points[1][1], classId)
         print(info)
         aFile.write(info + '\n')
-
 
 if __name__ == "__main__":
     root = "bbox_transform"

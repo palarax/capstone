@@ -1,6 +1,7 @@
+#! /usr/bin/env python
 """
 Reads Darknet config and weights and creates Keras model with TF backend.
-https://github.com/qqwweee/keras-yolo3
+
 """
 
 import argparse
@@ -37,6 +38,7 @@ parser.add_argument(
 
 def unique_config_sections(config_file):
     """Convert all config sections to have unique names.
+
     Adds unique suffixes to config sections for compability with configparser.
     """
     section_counters = defaultdict(int)

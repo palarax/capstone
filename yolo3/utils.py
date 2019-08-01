@@ -6,6 +6,12 @@ from PIL import Image
 import numpy as np
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
 
+# fix reletive imports
+try:
+    from model import preprocess_true_boxes
+except ImportError:
+    from yolo3.model import preprocess_true_boxes
+
 def compose(*funcs):
     """Compose arbitrarily many functions, evaluated left to right.
 
@@ -29,6 +35,31 @@ def letterbox_image(image, size):
     new_image = Image.new('RGB', size, (128,128,128))
     new_image.paste(image, ((w-nw)//2, (h-nh)//2))
     return new_image
+
+
+def data_generator(annotation_lines, batch_size, input_shape, anchors, num_classes):
+    '''data generator for fit_generator'''
+    n = len(annotation_lines)
+    i = 0
+    while True:
+        image_data = []
+        box_data = []
+        for b in range(batch_size):
+            if i==0:
+                np.random.shuffle(annotation_lines)
+            image, box = get_random_data(annotation_lines[i], input_shape, random=True)
+            image_data.append(image)
+            box_data.append(box)
+            i = (i+1) % n
+        image_data = np.array(image_data)   # input of original yolo: image
+        box_data = np.array(box_data)       # output of original yolo: boxes
+        y_true = preprocess_true_boxes(box_data, input_shape, anchors, num_classes) # some kind of output description?!
+        yield [image_data, *y_true], np.zeros(batch_size)
+
+def data_generator_wrapper(annotation_lines, batch_size, input_shape, anchors, num_classes):
+    n = len(annotation_lines)
+    if n==0 or batch_size<=0: return None
+    return data_generator(annotation_lines, batch_size, input_shape, anchors, num_classes)
 
 # USED
 def rand(a=0, b=1):

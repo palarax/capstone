@@ -9,7 +9,7 @@ import logging
 # KERAS
 import tensorflow as tf
 import keras.backend as K
-import h5py  # for saving model
+# import h5py  # for saving model
 from keras.layers import Input, Lambda
 from keras.models import Model
 from keras.optimizers import Adam
@@ -17,15 +17,16 @@ from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, Ear
 
 # YOLO model
 from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss
-from yolo3.utils import get_random_data
+from yolo3.utils import get_random_data, data_generator_wrapper
 
 from keras.utils import plot_model  # plot model
 
 
 # Initialize GPU
 from keras.backend.tensorflow_backend import set_session
-config = tf.compat.v1.ConfigProto()
-config.gpu_options.allow_growth = True
+gpu_options = tf.GPUOptions(allow_growth=True)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+#config.gpu_options.allow_growth = True
 sess = tf.compat.v1.Session(config=config)
 
 # Initialize logger
@@ -91,6 +92,7 @@ def create_model(input_shape, anchors, num_classes, load_pretrained=True, freeze
 
     return model
 
+
 def create_tiny_model(input_shape, anchors, num_classes, load_pretrained=True, freeze_body=2,
                       weights_path='model_data/tiny_yolo_weights.h5'):
     '''create the training model, for Tiny YOLOv3'''
@@ -124,6 +126,7 @@ def create_tiny_model(input_shape, anchors, num_classes, load_pretrained=True, f
 
     return model
 
+
 def _main_(args):
 
     config_path = args.conf
@@ -141,7 +144,6 @@ def _main_(args):
         config["logger"]["format"],
         config["logger"]["datefmt"])
 
-    log_dir = config["train"]["tensorboard_dir"]
     class_names = config["model"]["labels"]
     num_classes = len(class_names)
     anchors = np.array(config["model"]["anchors"]).reshape(-1, 2)
@@ -150,13 +152,21 @@ def _main_(args):
     #   Parse the annotations
     ###############################
     print("[INFO] Parsing annotations")
+    annotations = config["train"]["annotations"]
 
-    ###############################
-    #   Create the generators
-    ###############################
-    print("[INFO] Creating Training Generators")
+    ##################################
+    #   Create validation and training
+    ##################################
+    print("[INFO] Seperating Training and Validation")
 
-    print("[INFO] Creating Validation Generators")
+    val_split = 0.1
+    with open(annotations) as f:
+        lines = f.readlines()
+    np.random.seed(10101)
+    np.random.shuffle(lines)
+    np.random.seed(None)
+    num_val = int(len(lines)*val_split)
+    num_train = len(lines) - num_val
 
     ###############################
     #   Create the model
@@ -176,17 +186,81 @@ def _main_(args):
     # architecture + weights + optimizer state
     # allows to resume from where you left off
     # model.save('yolo_model_retrain.hdf5')  # creates a HDF5 file 'my_model.h5'
-    #model.summary()
+
+    # Literally outputs an image of a model
+    #plot_model(model, to_file='output/retrained_model.png', show_shapes = True)
+
+    ###############################
+    #   Monitoring
+    ###############################
+    print("[INFO] Creatinng Callbacks")
+    tensorboard = TensorBoard(log_dir=config["train"]["tensorboard_dir"]) # For the actual monitoring
+    checkpoint = ModelCheckpoint(config["train"]["model_stages"] + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
+                                 monitor='val_loss', save_weights_only=False, save_best_only=True, period=3)
+    reduce_lr = ReduceLROnPlateau(
+        monitor='val_loss', factor=0.1, patience=3, verbose=1)
+    early_stopping = EarlyStopping(
+        monitor='val_loss', min_delta=0, patience=10, verbose=1)
 
     ###############################
     #   Kick off the training
     ###############################
-    print("[INFO] Creatinng Callbacks")
     print("[INFO] Start Training")
+    # Train with frozen layers first, to get a stable loss.
+    # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
+    if True:
+        model.compile(optimizer=Adam(lr=1e-3),
+                      loss='mean_squared_error', metrics=['accuracy'])
+        batch_size = config["train"]["batch_size"]
+        print('[INFO] Train on {} samples, val on {} samples, with batch size {}.'.format(
+            num_train, num_val, batch_size))
+        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
+                            steps_per_epoch=max(1, num_train//batch_size),
+                            validation_data=data_generator_wrapper(
+                                lines[num_train:], batch_size, input_shape, anchors, num_classes),
+                            validation_steps=max(1, num_val//batch_size),
+                            epochs=config["train"]["epochs"],
+                            initial_epoch=0,
+                            callbacks=[tensorboard, checkpoint])
+        # model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+        model.save(config["train"]["model_stages"] +
+                   'trained_model_stage_1.h5')
+
+    # Unfreeze and continue training, to fine-tune.
+    # Train longer if the result is not good.
+    if True:
+        for i in range(len(model.layers)):
+            model.layers[i].trainable = True
+        # recompile to apply the change
+        model.compile(optimizer=Adam(lr=1e-4),
+                      loss='mean_squared_error', metrics=['accuracy'])
+        print('[INFO] Unfreeze all of the layers.')
+
+        batch_size = 1  # note that more GPU memory is required after unfreezing the body
+        print('[INFO] Train on {} samples, val on {} samples, with batch size {}.'.format(
+            num_train, num_val, batch_size))
+        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
+                            steps_per_epoch=max(1, num_train//batch_size),
+                            validation_data=data_generator_wrapper(
+                                lines[num_train:], batch_size, input_shape, anchors, num_classes),
+                            validation_steps=max(1, num_val//batch_size),
+                            epochs=100,
+                            initial_epoch=50,
+                            callbacks=[tensorboard, checkpoint, reduce_lr, early_stopping])
+        model.save(config["train"]["model_stages"] + 'train_model_final.h5')
+
+    derived_model = Model(model.input[0], [
+                          model.layers[249].output, model.layers[250].output, model.layers[251].output])
+    
+    derived_model.save(config["train"]["model_stagers"])
+    plot_model(derived_model, to_file='output/derived_model.png',
+               show_shapes=True)
+
 
 
 if __name__ == '__main__':
     # TODO: add python logger
+    # TODO: https://www.youtube.com/watch?v=BqgTU7_cBnk
     argparser = argparse.ArgumentParser(
         description='train and evaluate YOLO_v3 model on any dataset')
     argparser.add_argument('-c', '--conf', help='path to configuration file')
