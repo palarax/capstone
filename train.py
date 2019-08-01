@@ -194,7 +194,8 @@ def _main_(args):
     #   Monitoring
     ###############################
     print("[INFO] Creatinng Callbacks")
-    tensorboard = TensorBoard(log_dir=config["train"]["tensorboard_dir"]) # For the actual monitoring
+    # For the actual monitoring
+    tensorboard = TensorBoard(log_dir=config["train"]["tensorboard_dir"])
     checkpoint = ModelCheckpoint(config["train"]["model_stages"] + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
                                  monitor='val_loss', save_weights_only=False, save_best_only=True, period=3)
     reduce_lr = ReduceLROnPlateau(
@@ -209,8 +210,9 @@ def _main_(args):
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:
-        model.compile(optimizer=Adam(lr=1e-3),
-                      loss='mean_squared_error', metrics=['accuracy'])
+        model.compile(optimizer=Adam(lr=1e-2),
+                      loss='mean_squared_error',
+                      metrics=['mean_squared_error'])
         batch_size = config["train"]["batch_size"]
         print('[INFO] Train on {} samples, val on {} samples, with batch size {}.'.format(
             num_train, num_val, batch_size))
@@ -219,8 +221,8 @@ def _main_(args):
                             validation_data=data_generator_wrapper(
                                 lines[num_train:], batch_size, input_shape, anchors, num_classes),
                             validation_steps=max(1, num_val//batch_size),
-                            epochs=config["train"]["epochs"],
                             initial_epoch=0,
+                            epochs=config["train"]["epochs"],
                             callbacks=[tensorboard, checkpoint])
         # model.save_weights(log_dir + 'trained_weights_stage_1.h5')
         model.save(config["train"]["model_stages"] +
@@ -233,7 +235,8 @@ def _main_(args):
             model.layers[i].trainable = True
         # recompile to apply the change
         model.compile(optimizer=Adam(lr=1e-4),
-                      loss='mean_squared_error', metrics=['accuracy'])
+                      loss='mean_squared_error',
+                      metrics=['mean_squared_error'])
         print('[INFO] Unfreeze all of the layers.')
 
         batch_size = 1  # note that more GPU memory is required after unfreezing the body
@@ -244,23 +247,23 @@ def _main_(args):
                             validation_data=data_generator_wrapper(
                                 lines[num_train:], batch_size, input_shape, anchors, num_classes),
                             validation_steps=max(1, num_val//batch_size),
-                            epochs=100,
-                            initial_epoch=50,
+                            initial_epoch=config["train"]["epochs"],
+                            epochs=config["train"]["epochs"]+50,
                             callbacks=[tensorboard, checkpoint, reduce_lr, early_stopping])
         model.save(config["train"]["model_stages"] + 'train_model_final.h5')
 
     derived_model = Model(model.input[0], [
                           model.layers[249].output, model.layers[250].output, model.layers[251].output])
-    
-    derived_model.save(config["train"]["model_stagers"])
+
+    derived_model.save(config["train"]["model_stages"])
     plot_model(derived_model, to_file='output/derived_model.png',
                show_shapes=True)
-
 
 
 if __name__ == '__main__':
     # TODO: add python logger
     # TODO: https://www.youtube.com/watch?v=BqgTU7_cBnk
+    # https://github.com/bing0037/keras-yolo3
     argparser = argparse.ArgumentParser(
         description='train and evaluate YOLO_v3 model on any dataset')
     argparser.add_argument('-c', '--conf', help='path to configuration file')
