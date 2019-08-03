@@ -197,9 +197,9 @@ def _main_(args):
     # For the actual monitoring
     tensorboard = TensorBoard(log_dir=config["train"]["tensorboard_dir"])
     checkpoint = ModelCheckpoint(config["train"]["model_stages"] + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
-                                 monitor='val_loss', save_weights_only=False, save_best_only=True, period=3)
+                                 monitor='val_loss', save_weights_only=False, save_best_only=True, period=4)
     reduce_lr = ReduceLROnPlateau(
-        monitor='val_loss', factor=0.1, patience=3, verbose=1)
+        monitor='val_loss', factor=0.01, patience=3, verbose=1)
     early_stopping = EarlyStopping(
         monitor='val_loss', min_delta=0, patience=10, verbose=1)
 
@@ -210,7 +210,7 @@ def _main_(args):
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
     if True:
-        model.compile(optimizer=Adam(lr=1e-2),
+        model.compile(optimizer=Adam(lr=1e-3),
                       loss='mean_squared_error',
                       metrics=['mean_squared_error'])
         batch_size = config["train"]["batch_size"]
@@ -239,7 +239,7 @@ def _main_(args):
                       metrics=['mean_squared_error'])
         print('[INFO] Unfreeze all of the layers.')
 
-        batch_size = 1  # note that more GPU memory is required after unfreezing the body
+        batch_size = 2  # note that more GPU memory is required after unfreezing the body
         print('[INFO] Train on {} samples, val on {} samples, with batch size {}.'.format(
             num_train, num_val, batch_size))
         model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
@@ -250,8 +250,31 @@ def _main_(args):
                             initial_epoch=config["train"]["epochs"],
                             epochs=config["train"]["epochs"]+50,
                             callbacks=[tensorboard, checkpoint, reduce_lr, early_stopping])
-        model.save(config["train"]["model_stages"] + 'train_model_final.h5')
+        model.save(config["train"]["model_stages"] + 'trained_model_stage_2.h5')
 
+# do more training
+    if True:
+        for i in range(len(model.layers)):
+            model.layers[i].trainable = True
+        # recompile to apply the change
+        model.compile(optimizer=Adam(lr=1e-5),
+                      loss='mean_squared_error',
+                      metrics=['mean_squared_error'])
+        print('[INFO] More refined training')
+
+        batch_size = 2  # note that more GPU memory is required after unfreezing the body
+        print('[INFO] Train on {} samples, val on {} samples, with batch size {}.'.format(
+            num_train, num_val, batch_size))
+        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
+                            steps_per_epoch=max(1, num_train//batch_size),
+                            validation_data=data_generator_wrapper(
+                                lines[num_train:], batch_size, input_shape, anchors, num_classes),
+                            validation_steps=max(1, num_val//batch_size),
+                            initial_epoch=config["train"]["epochs"] +50,
+                            epochs=config["train"]["epochs"]+100,
+                            callbacks=[tensorboard, checkpoint, reduce_lr, early_stopping])
+        model.save(config["train"]["model_stages"] + 'train_model_final.h5')
+    
     derived_model = Model(model.input[0], [
                           model.layers[249].output, model.layers[250].output, model.layers[251].output])
 

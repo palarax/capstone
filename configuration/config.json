@@ -21,7 +21,7 @@
         "annotations":          "dataset/annotations.txt",
         "batch_size":           8,
         "learning_rate":        1e-4,
-        "epochs":               100,
+        "epochs":               50,
 
         "tensorboard_dir":      "logs/tensorboard/003",
         "model_stages":         "model_stages/003/",
