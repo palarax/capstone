@@ -278,7 +278,7 @@ def _main_(args):
     derived_model = Model(model.input[0], [
                           model.layers[249].output, model.layers[250].output, model.layers[251].output])
 
-    derived_model.save(config["train"]["model_stages"])
+    derived_model.save(config["train"]["model_stages"] + "derived_model.h5")
     plot_model(derived_model, to_file='output/derived_model.png',
                show_shapes=True)
 
