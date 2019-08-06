@@ -1,3 +1,11 @@
+GITHUB HELP
+SSD:
+    https://github.com/tanakataiki/ssd_kerasV2 --using this one for this commit
+    https://github.com/rykov8/ssd_keras
+
+
+
+GENERAL NOTES FOR CAPSTONE
 Cheeky guide
 https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46
 
@@ -10,10 +18,6 @@ https://arxiv.org/pdf/1809.04288.pdf
 https://link.springer.com/chapter/10.1007/978-3-319-59147-6_21
 https://www.researchgate.net/publication/317801679_Recognizing_Pedestrian_Direction_Using_Convolutional_Neural_Networks
 
-## ideas
-Look for people taking photos
-People calling
-Tourists
 
 
 
