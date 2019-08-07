@@ -2,6 +2,7 @@ GITHUB HELP
 SSD:
     https://github.com/tanakataiki/ssd_kerasV2 --using this one for this commit
     https://github.com/rykov8/ssd_keras
+    https://github.com/pierluigiferrari/ssd_keras
 
 
 
@@ -9,8 +10,6 @@ GENERAL NOTES FOR CAPSTONE
 Cheeky guide
 https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46
 
-https://github.com/matterport/Mask_RCNN
-https://github.com/karolmajek/Mask_RCNN
 
 Papers
 https://arxiv.org/pdf/1801.08234.pdf

@@ -1,6 +1,6 @@
 import numpy as np
-from scipy.misc import imread
-from scipy.misc import imresize
+from scipy.misc.pilutil import imread
+from scipy.misc.pilutil import imresize
 
 from keras.applications.imagenet_utils import preprocess_input
 from random import shuffle
@@ -134,7 +134,7 @@ class Generator(object):
                 ymin = max(0, ymin)
                 xmax = min(1, xmax)
                 ymax = min(1, ymax)
-                box[:4] = [xmin, ymin, xmax, ymax]
+                box[:4] = [xmin, ymin, xmax, ymax] # fetch first 4 results
                 new_targets.append(box)
         new_targets = np.asarray(new_targets).reshape(-1, targets.shape[1])
         return img, new_targets

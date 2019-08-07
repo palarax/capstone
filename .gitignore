@@ -9,6 +9,7 @@ test/
 
 # ignore large models
 *.h5
+*.hdf5
 *.weights
 *.pt
 

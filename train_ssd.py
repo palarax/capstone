@@ -1,5 +1,5 @@
 
-#%%
+# %%
 import numpy as np
 import pickle
 import cv2
@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 # Deep learning
 import keras
 import tensorflow as tf
-from keras.callbacks import TensorBoard, ModelCheckpoint, LearningRateScheduler, EarlyStopping # monitoring callbacks
+# monitoring callbacks
+from keras.callbacks import TensorBoard, ModelCheckpoint, LearningRateScheduler, EarlyStopping
 from keras.optimizers import Adam
 from keras.backend.tensorflow_backend import set_session
 # from keras import backend as K
@@ -20,9 +21,10 @@ from model.ssd300MobileNet import SSD
 from utils.ssd_training import MultiboxLoss
 from utils.ssd_utils import BBoxUtility
 from utils.generator import Generator
+from utils.utils import get_annotations
 
-########## VALIDATION
-from scipy.misc import imread
+# VALIDATION
+from scipy.misc.pilutil import imread
 from keras.applications.imagenet_utils import preprocess_input
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
@@ -33,40 +35,45 @@ np.set_printoptions(suppress=True)
 #######################################################################
 #   Setup GPU
 #######################################################################
-SESSION = tf.Session(config=tf.ConfigProto(log_device_placement=True))
-set_session(SESSION)
+gpu_options = tf.GPUOptions(allow_growth=True)
+config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+#config.gpu_options.allow_growth = True
+sess = tf.compat.v1.Session(config=config)
+# SESSION = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+# set_session(SESSION)
 # K.clear_session() # Clear previous models from memory.
 # config = tf.ConfigProto()
 # config.gpu_options.per_process_gpu_memory_fraction = 0.4
 # set_session(tf.Session(config=config))
 
-#%%
+# %%
 # some constants
-NUM_CLASSES = 4 # positive clases TODO: 0 is for background
+NUM_CLASSES = 5  # positive clases TODO: 0 is for background
 input_shape = (300, 300, 3)
 
-#%%
+# %%
 #######################################################################
 #   Create model
 #######################################################################
 model = SSD(input_shape, num_classes=NUM_CLASSES)
-model.load_weights('VGG16SSD300_weights_voc_2007.hdf5', by_name=True)
+model.load_weights(
+    './weights/MobileNetSSD300weights_voc_2007_class20.hdf5', by_name=True)
 
-#%%
+# %%
 #######################################################################
-#   Freeze model layers
+#   Freeze model layers # TODO: figure out the layers to freeze
 #######################################################################
-freeze = ['input_1', 'conv1_1', 'conv1_2', 'pool1',
-          'conv2_1', 'conv2_2', 'pool2',
-          'conv3_1', 'conv3_2', 'conv3_3', 'pool3']#,
-#           'conv4_1', 'conv4_2', 'conv4_3', 'pool4']
+# freeze = ['input_1', 'conv1_1', 'conv1_2', 'pool1',
+#           'conv2_1', 'conv2_2', 'pool2',
+#           'conv3_1', 'conv3_2', 'conv3_3', 'pool3']#,
+# #           'conv4_1', 'conv4_2', 'conv4_3', 'pool4']
 
-for L in model.layers:
-    if L.name in freeze:
-        L.trainable = False
+# for L in model.layers:
+#     if L.name in freeze:
+#         L.trainable = False
 
 # TODO: load entire model, rather than just weights. Might require custom objects
-#%%
+# %%
 #######################################################################
 #  Instantiate optimizer, SDD loss function and Compile model
 #######################################################################
@@ -78,17 +85,20 @@ optim = Adam(lr=base_lr)
 model.compile(optimizer=optim,
               loss=MultiboxLoss(NUM_CLASSES, neg_pos_ratio=2.0).compute_loss, metrics=['acc'])
 
-#%%
+# %%
 #######################################################################
 #   Setup data generators for training
 # https://github.com/pierluigiferrari/ssd_keras/blob/master/ssd7_training.ipynb
 # https://github.com/pierluigiferrari/data_generator_object_detection_2d
 #######################################################################
-priors = pickle.load(open('priorFiles/prior_boxes_ssd300VGG16.pkl', 'rb'))
+priors = pickle.load(open('priorFiles/prior_boxes_ssd300MobileNet.pkl', 'rb'))
 bbox_util = BBoxUtility(NUM_CLASSES, priors)
 
-#%%
-gt = pickle.load(open('voc_2007.pkl', 'rb'))
+# %%
+# TODO: generator
+# key = image_name (no path), value = [xmin, ymin, xmax, ymax]
+# gt = pickle.load(open('voc_2007.pkl', 'rb'))
+gt = get_annotations("./dataset/annotations_raw.txt")
 keys = sorted(gt.keys())
 num_train = int(round(0.8 * len(keys)))
 train_keys = keys[:num_train]
@@ -96,47 +106,55 @@ val_keys = keys[num_train:]
 num_val = len(val_keys)
 
 
-#%%
-path_prefix = 'path2yourJPEG'
-gen = Generator(gt, bbox_util, 16, path_prefix,
+# %%
+path_prefix = './dataset/images/'
+batch_size = 8
+gen = Generator(gt, bbox_util, batch_size, path_prefix,
                 train_keys, val_keys,
                 (input_shape[0], input_shape[1]), do_crop=False)
 
 
-
-
-#%%
+# %%
 #######################################################################
 #   Setup callbacks and monitoring
 #######################################################################
 def schedule(epoch, decay=0.9):
     return base_lr * decay**(epoch)
 
-model_checkpoint = ModelCheckpoint('./output/checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_weights_only=True, period=1)
-# early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.0, patience=10, verbose=1) #TODO: fix this
 
-tensorboard = TensorBoard(log_dir='./logs', batch_size=16) # TODO: Fix Tensorboard variables
-lrSchedular =  LearningRateScheduler(schedule)
-callbacks = [tensorboard, model_checkpoint, lrSchedular]
+model_checkpoint = ModelCheckpoint(
+    './output/checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_weights_only=True, period=1)
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1) #TODO: fix this
+
+# TODO: Fix Tensorboard variables
+tensorboard = TensorBoard(log_dir='./logs/tensorboard/001',write_images=True)
+lrSchedular = LearningRateScheduler(schedule)
+callbacks = [tensorboard, model_checkpoint, lrSchedular, early_stopping]
 
 
-#%%
+# %%
 #######################################################################
 #   TRAIN model
 #######################################################################
-nb_epoch = 30
+nb_epoch = 50
+# TODO: check out https://github.com/pierluigiferrari/ssd_keras/blob/master/weight_sampling_tutorial.ipynb
+# looks like the shape is incomopatible
 history = model.fit_generator(gen.generate(True), gen.train_batches,
                               nb_epoch, verbose=1,
+                        #       steps_per_epoch=max(1, num_train//batch_size),
                               callbacks=callbacks,
                               validation_data=gen.generate(False),
-                              nb_val_samples=gen.val_batches,
-                              nb_worker=1)
+                              validation_steps=gen.val_batches)
+                        #       nb_val_samples=gen.val_batches,
+                        #       nb_worker=1)
+model.save_weights('./output/trained_weights_final.hdf5')
+model.save("./output/trained_model_final.h5")
 
 
 #######################################################################
 #   TODO: Confirm if this is valiation
 #######################################################################
-#%%
+# %%
 inputs = []
 images = []
 img_path = path_prefix + sorted(val_keys)[0]
@@ -147,12 +165,12 @@ inputs.append(img.copy())
 inputs = preprocess_input(np.array(inputs))
 
 
-#%%
+# %%
 preds = model.predict(inputs, batch_size=1, verbose=1)
 results = bbox_util.detection_out(preds)
 
 
-#%%
+# %%
 for i, img in enumerate(images):
     # Parse the outputs.
     det_label = results[i][:, 0]
@@ -188,9 +206,9 @@ for i, img in enumerate(images):
         display_txt = '{:0.2f}, {}'.format(score, label)
         coords = (xmin, ymin), xmax-xmin+1, ymax-ymin+1
         color = colors[label]
-        currentAxis.add_patch(plt.Rectangle(*coords, fill=False, edgecolor=color, linewidth=2))
-        currentAxis.text(xmin, ymin, display_txt, bbox={'facecolor':color, 'alpha':0.5})
-    
+        currentAxis.add_patch(plt.Rectangle(
+            *coords, fill=False, edgecolor=color, linewidth=2))
+        currentAxis.text(xmin, ymin, display_txt, bbox={
+                         'facecolor': color, 'alpha': 0.5})
+
     plt.show()
-
-
