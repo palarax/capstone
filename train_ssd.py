@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 # Deep learning
 import keras
 import tensorflow as tf
+from keras.callbacks import TensorBoard, ModelCheckpoint, LearningRateScheduler, EarlyStopping # monitoring callbacks
+from keras.optimizers import Adam
 from keras.backend.tensorflow_backend import set_session
 # from keras import backend as K
 from keras.models import Model
@@ -40,7 +42,7 @@ set_session(SESSION)
 
 #%%
 # some constants
-NUM_CLASSES = 4 # positive clases
+NUM_CLASSES = 4 # positive clases TODO: 0 is for background
 input_shape = (300, 300, 3)
 
 #%%
@@ -69,10 +71,10 @@ for L in model.layers:
 #  Instantiate optimizer, SDD loss function and Compile model
 #######################################################################
 base_lr = 3e-4
-optim = keras.optimizers.Adam(lr=base_lr)
+optim = Adam(lr=base_lr)
 # adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0) # example for SDD7
-# optim = keras.optimizers.RMSprop(lr=base_lr)
-# optim = keras.optimizers.SGD(lr=base_lr, momentum=0.9, decay=decay, nesterov=True)
+# optim = RMSprop(lr=base_lr)
+# optim = SGD(lr=base_lr, momentum=0.9, decay=decay, nesterov=True)
 model.compile(optimizer=optim,
               loss=MultiboxLoss(NUM_CLASSES, neg_pos_ratio=2.0).compute_loss, metrics=['acc'])
 
@@ -110,11 +112,12 @@ gen = Generator(gt, bbox_util, 16, path_prefix,
 def schedule(epoch, decay=0.9):
     return base_lr * decay**(epoch)
 
-model_checkpoint = keras.callbacks.ModelCheckpoint('./output/checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_weights_only=True, period=1)
+model_checkpoint = ModelCheckpoint('./output/checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_weights_only=True, period=1)
 # early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.0, patience=10, verbose=1) #TODO: fix this
-#TODO: tensorboard
-lrSchedular =  keras.callbacks.LearningRateScheduler(schedule)
-callbacks = [model_checkpoint, lrSchedular]
+
+tensorboard = TensorBoard(log_dir='./logs', batch_size=16) # TODO: Fix Tensorboard variables
+lrSchedular =  LearningRateScheduler(schedule)
+callbacks = [tensorboard, model_checkpoint, lrSchedular]
 
 
 #%%
