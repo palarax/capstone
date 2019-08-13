@@ -11,7 +11,7 @@
         "min_input_size":       288,
         "max_input_size":       448,
         "anchors":              [23,93, 47,171, 65,277, 92,345, 96,199, 114,262, 134,365, 186,365, 261,354],
-        "labels": ["pedestrian_bb", "cyclist_bb", "facing_back_bb", "on-call_bb", "on-mobile_bb"]
+        "labels": ["pedestrian", "cyclist", "on-call","on-mobile","facing_back_bb"]
     },
 
     "train": {

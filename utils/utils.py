@@ -40,14 +40,15 @@ def get_annotations(annot_raw):
 
 def _to_one_hot(name):
     one_hot_vector = [0] * 4
+    # background = 0
     if name == 1:
-        one_hot_vector[0] = 1
+        one_hot_vector[0] = 1 # pedestrian
     elif name == 2:
-        one_hot_vector[1] = 1
+        one_hot_vector[1] = 1 # cyclist
     elif name == 3:
-        one_hot_vector[2] = 1
+        one_hot_vector[2] = 1 # on-call
     elif name == 4:
-        one_hot_vector[3] = 1
+        one_hot_vector[3] = 1 # on-mobile
     else:
         print('unknown label: %s' % name)
 

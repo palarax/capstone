@@ -3,6 +3,7 @@ dataset/images
 results/
 temp/
 test/
+logs/
 
 # ignore large assets
 *.mp4
