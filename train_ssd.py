@@ -136,14 +136,14 @@ early_stopping = EarlyStopping(
     monitor='val_loss', patience=5, verbose=1)  # TODO: fix this
 
 # TODO: Fix Tensorboard variables
-tensorboard = TensorBoard(log_dir='./logs/tensorboard/003', write_images=True)
+tensorboard = TensorBoard(log_dir='./logs/tensorboard/004', write_images=True)
 lrSchedular = LearningRateScheduler(schedule)
 
 # %%
 #######################################################################
 #  Instantiate optimizer, SDD loss function and Compile model
 #######################################################################
-base_lr = 1e-3
+base_lr = 3e-4
 optim = Adam(lr=base_lr)
 # adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0) # example for SDD7
 # optim = RMSprop(lr=base_lr)
@@ -169,8 +169,8 @@ history = model.fit_generator(gen.generate(True), gen.train_batches,
                               validation_steps=gen.val_batches)
 #       nb_val_samples=gen.val_batches,
 #       nb_worker=1)
-model.save_weights('./output/checkpoints/trained_weights_stage1_003.hdf5')
-
+model.save_weights('./output/checkpoints/trained_weights_stage1_004.hdf5')
+model.save("./output/trained_model_final_004.h5")
 
 # Unfreeze and continue training, to fine-tune.
 # for i in range(len(model.layers)):
