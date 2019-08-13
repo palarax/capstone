@@ -17,15 +17,17 @@ from keras.models import Model
 from keras.preprocessing import image
 
 # Custom classes and libraries
-from model.ssd300MobileNet import SSD
+# from model.ssd300MobileNet import SSD
+from model.ssd300VGG16 import SSD
 from utils.ssd_training import MultiboxLoss
 from utils.ssd_utils import BBoxUtility
 from utils.generator import Generator
-from utils.utils import get_annotations
+from utils.utils import get_annotations, isWeightsChanged, get_weights_layers
 
 # VALIDATION
 from scipy.misc.pilutil import imread
 from keras.applications.imagenet_utils import preprocess_input
+
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
 # plt.rcParams['figure.figsize'] = (8, 8)
@@ -51,26 +53,35 @@ sess = tf.compat.v1.Session(config=config)
 NUM_CLASSES = 5  # positive clases TODO: 0 is for background
 input_shape = (300, 300, 3)
 
-# %%
 #######################################################################
 #   Create model
 #######################################################################
 model = SSD(input_shape, num_classes=NUM_CLASSES)
 model.load_weights(
-    './weights/MobileNetSSD300weights_voc_2007_class20.hdf5', by_name=True)
+    './weights/VGG16SSD300weights_voc_2007_class20.hdf5', by_name=True)
+# new_model.load_weights(
+#     './weights/MobileNetSSD300weights_voc_2007_class20.hdf5', by_name=False)
+
+# # l_names = get_weights_layers("./weights/MobileNetSSD300weights_voc_2007_class20.hdf5")
+# # print(l_names)
+# isWeightsChanged(model, new_model)
+
+# model.summary()
+# for L in model.layers:
+#     print(str(L.name))
 
 # %%
 #######################################################################
 #   Freeze model layers # TODO: figure out the layers to freeze
 #######################################################################
-# freeze = ['input_1', 'conv1_1', 'conv1_2', 'pool1',
-#           'conv2_1', 'conv2_2', 'pool2',
-#           'conv3_1', 'conv3_2', 'conv3_3', 'pool3']#,
-# #           'conv4_1', 'conv4_2', 'conv4_3', 'pool4']
+freeze = ['input_1', 'conv1_1', 'conv1_2', 'pool1',
+          'conv2_1', 'conv2_2', 'pool2',
+          'conv3_1', 'conv3_2', 'conv3_3', 'pool3']  # ,
+#           'conv4_1', 'conv4_2', 'conv4_3', 'pool4']
 
-# for L in model.layers:
-#     if L.name in freeze:
-#         L.trainable = False
+for L in model.layers:
+    if L.name in freeze:
+        L.trainable = False
 
 # TODO: load entire model, rather than just weights. Might require custom objects
 # %%
@@ -91,7 +102,7 @@ model.compile(optimizer=optim,
 # https://github.com/pierluigiferrari/ssd_keras/blob/master/ssd7_training.ipynb
 # https://github.com/pierluigiferrari/data_generator_object_detection_2d
 #######################################################################
-priors = pickle.load(open('priorFiles/prior_boxes_ssd300MobileNet.pkl', 'rb'))
+priors = pickle.load(open('priorFiles/prior_boxes_ssd300VGG16.pkl', 'rb'))
 bbox_util = BBoxUtility(NUM_CLASSES, priors)
 
 # %%
@@ -99,6 +110,7 @@ bbox_util = BBoxUtility(NUM_CLASSES, priors)
 # key = image_name (no path), value = [xmin, ymin, xmax, ymax]
 # gt = pickle.load(open('voc_2007.pkl', 'rb'))
 gt = get_annotations("./dataset/annotations_raw.txt")
+# TODO: sort this manually
 keys = sorted(gt.keys())
 num_train = int(round(0.8 * len(keys)))
 train_keys = keys[:num_train]
@@ -123,11 +135,12 @@ def schedule(epoch, decay=0.9):
 
 
 model_checkpoint = ModelCheckpoint(
-    './output/checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_weights_only=True, period=1)
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1) #TODO: fix this
+    './output/checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_weights_only=True, period=5)
+early_stopping = EarlyStopping(
+    monitor='val_loss', patience=5, verbose=1)  # TODO: fix this
 
 # TODO: Fix Tensorboard variables
-tensorboard = TensorBoard(log_dir='./logs/tensorboard/001',write_images=True)
+tensorboard = TensorBoard(log_dir='./logs/tensorboard/001', write_images=True)
 lrSchedular = LearningRateScheduler(schedule)
 callbacks = [tensorboard, model_checkpoint, lrSchedular, early_stopping]
 
@@ -141,12 +154,12 @@ nb_epoch = 50
 # looks like the shape is incomopatible
 history = model.fit_generator(gen.generate(True), gen.train_batches,
                               nb_epoch, verbose=1,
-                        #       steps_per_epoch=max(1, num_train//batch_size),
+                              #       steps_per_epoch=max(1, num_train//batch_size),
                               callbacks=callbacks,
                               validation_data=gen.generate(False),
                               validation_steps=gen.val_batches)
-                        #       nb_val_samples=gen.val_batches,
-                        #       nb_worker=1)
+#       nb_val_samples=gen.val_batches,
+#       nb_worker=1)
 model.save_weights('./output/trained_weights_final.hdf5')
 model.save("./output/trained_model_final.h5")
 

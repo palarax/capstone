@@ -48,6 +48,7 @@ class Generator(object):
         self.aspect_ratio_range = aspect_ratio_range
         
     def grayscale(self, rgb):
+        # if image in graysclae (shape (300,300)), this will fail
         return rgb.dot([0.299, 0.587, 0.114])
 
     def saturation(self, rgb):

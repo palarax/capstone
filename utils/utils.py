@@ -8,6 +8,8 @@ def get_annotations(annot_raw):
     data = {}
     final_data = dict()
     for line in open(annot_raw):
+        if "img_144" in line:
+            continue # skip grayscale images
         img, meta = line.split(" ")
         img = img.replace("images/", "")  # remove path
         x1, y1, x2, y2, class_no = meta.split(",")
@@ -50,3 +52,16 @@ def _to_one_hot(name):
         print('unknown label: %s' % name)
 
     return one_hot_vector
+
+
+def isWeightsChanged(model, model_new):
+    print("Are weights equal - ",
+          any([np.array_equal(a1, a2) for a1, a2 in zip(
+              model.get_weights(), model_new.get_weights()[:4])]))
+
+
+def get_weights_layers(weights):
+    #Debug
+    import h5py
+    f = h5py.File(weights, 'r')
+    return list(f.keys())
