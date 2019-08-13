@@ -3,6 +3,9 @@ SSD:
     https://github.com/tanakataiki/ssd_kerasV2 --using this one for this commit
     https://github.com/rykov8/ssd_keras
     https://github.com/pierluigiferrari/ssd_keras
+    
+    # try this for fine tuning
+    https://stackoverflow.com/questions/37213388/keras-accuracy-does-not-change
 
 
 
@@ -16,8 +19,6 @@ https://arxiv.org/pdf/1801.08234.pdf
 https://arxiv.org/pdf/1809.04288.pdf
 https://link.springer.com/chapter/10.1007/978-3-319-59147-6_21
 https://www.researchgate.net/publication/317801679_Recognizing_Pedestrian_Direction_Using_Convolutional_Neural_Networks
-
-
 
 
     # https://www.kaggle.com/venuraja79/using-transfer-learning-with-keras
