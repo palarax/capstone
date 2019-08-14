@@ -122,10 +122,12 @@ gen = Generator(gt, bbox_util, batch_size, path_prefix,
 #   Setup callbacks and monitoring
 #######################################################################
 def schedule(epoch, decay=0.9):
-    if epoch < 50:
-        return base_lr  # * 0.001
-    elif epoch < 100:
-        return round(base_lr * decay**(epoch/10), 7)
+    if epoch < 12:
+        return base_lr
+    elif epoch < 20:
+        return base_lr
+    elif epoch < 25:
+        return base_lr * decay**(epoch/2)
     else:
         return base_lr * decay**(epoch)  # 0.00001
     # return base_lr * decay**(epoch) # original
@@ -144,7 +146,9 @@ lrSchedular = LearningRateScheduler(schedule)
 #######################################################################
 #  Instantiate optimizer, SDD loss function and Compile model
 #######################################################################
-base_lr = 3e-4
+# base_lr = 3e-4
+# NOTE: 1e-2 is shit
+base_lr = 4e-3
 optim = Adam(lr=base_lr)
 # adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0) # example for SDD7
 # optim = RMSprop(lr=base_lr)
@@ -158,9 +162,9 @@ model.compile(optimizer=optim,
 #######################################################################
 
 # Train with frozen layers first, to get a stable loss.
-nb_epoch = 50
-# callbacks = [tensorboard, model_checkpoint, lrSchedular]
-callbacks = [tensorboard, model_checkpoint, lrSchedular, early_stopping]
+nb_epoch = 12
+callbacks = [tensorboard, model_checkpoint, lrSchedular]
+# callbacks = [tensorboard, model_checkpoint, lrSchedular, early_stopping]
 history = model.fit_generator(gen.generate(True), gen.train_batches,
                               verbose=1,
                               epochs=nb_epoch,
@@ -170,28 +174,28 @@ history = model.fit_generator(gen.generate(True), gen.train_batches,
                               validation_steps=gen.val_batches)
 #       nb_val_samples=gen.val_batches,
 #       nb_worker=1)
-model.save_weights('./output/checkpoints/trained_weights_stage1_004.hdf5')
-model.save("./output/trained_model_final_005.h5")
+model.save_weights('./output/checkpoints/trained_weights_stage1_005.hdf5')
+# model.save("./output/trained_model_final_005.h5")
 
 # Unfreeze and continue training, to fine-tune.
-# for i in range(len(model.layers)):
-#     model.layers[i].trainable = True
+for i in range(len(model.layers)):
+    model.layers[i].trainable = True
 
-# base_lr = 1e-4
-# optim = Adam(lr=base_lr)
-# callbacks = [tensorboard, model_checkpoint, lrSchedular, early_stopping]
+base_lr = 3e-4
+optim = Adam(lr=base_lr)
+callbacks = [tensorboard, model_checkpoint, lrSchedular, early_stopping]
 
-# history = model.fit_generator(gen.generate(True), gen.train_batches,
-#                               verbose=1,
-#                               epochs=nb_epoch+50,
-#                               initial_epoch=nb_epoch,
-#                               callbacks=callbacks,
-#                               validation_data=gen.generate(False),
-#                               validation_steps=gen.val_batches)
-# #       nb_val_samples=gen.val_batches,
-# #       nb_worker=1)
-# model.save_weights('./output/trained_weights_final_003.hdf5')
-# model.save("./output/trained_model_final_003.h5")
+history = model.fit_generator(gen.generate(True), gen.train_batches,
+                              verbose=1,
+                              epochs=nb_epoch+50,
+                              initial_epoch=nb_epoch,
+                              callbacks=callbacks,
+                              validation_data=gen.generate(False),
+                              validation_steps=gen.val_batches)
+#       nb_val_samples=gen.val_batches,
+#       nb_worker=1)
+model.save_weights('./output/trained_weights_final_005.hdf5')
+model.save("./output/trained_model_final_005.h5")
 
 #######################################################################
 #   TODO: Confirm if this is valiation
