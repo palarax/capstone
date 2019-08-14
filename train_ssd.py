@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 import cv2
 import matplotlib.pyplot as plt
+from decimal import Decimal
 
 # Deep learning
 import keras
@@ -103,7 +104,7 @@ gt = get_annotations("./dataset/annotations_raw.txt")
 # TODO: sort this manually
 keys = sorted(gt.keys())
 num_train = int(round(0.8 * len(keys)))
-train_keys= keys[: num_train]
+train_keys = keys[: num_train]
 val_keys = keys[num_train:]
 num_val = len(val_keys)
 
@@ -113,30 +114,30 @@ path_prefix = './dataset/images/'
 batch_size = 8
 gen = Generator(gt, bbox_util, batch_size, path_prefix,
                 train_keys, val_keys,
-                (input_shape[0], input_shape[1]), do_crop = False)
+                (input_shape[0], input_shape[1]), do_crop=False)
 
 
 # %%
 #######################################################################
 #   Setup callbacks and monitoring
 #######################################################################
-def schedule(epoch, decay = 0.9):
-    # if epoch < 80:
-    #     return 0.001
-    # elif epoch < 100:
-    #     return 0.0001
-    # else:
-    #     return 0.00001
-    return base_lr * decay**(epoch)
+def schedule(epoch, decay=0.9):
+    if epoch < 50:
+        return base_lr  # * 0.001
+    elif epoch < 100:
+        return round(base_lr * decay**(epoch/10), 7)
+    else:
+        return base_lr * decay**(epoch)  # 0.00001
+    # return base_lr * decay**(epoch) # original
 
 
-model_checkpoint=ModelCheckpoint(
+model_checkpoint = ModelCheckpoint(
     './output/checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5', verbose=1, save_weights_only=True, period=5)
 early_stopping = EarlyStopping(
     monitor='val_loss', patience=5, verbose=1)  # TODO: fix this
 
 # TODO: Fix Tensorboard variables
-tensorboard = TensorBoard(log_dir='./logs/tensorboard/004', write_images=True)
+tensorboard = TensorBoard(log_dir='./logs/tensorboard/005', write_images=True)
 lrSchedular = LearningRateScheduler(schedule)
 
 # %%
@@ -170,7 +171,7 @@ history = model.fit_generator(gen.generate(True), gen.train_batches,
 #       nb_val_samples=gen.val_batches,
 #       nb_worker=1)
 model.save_weights('./output/checkpoints/trained_weights_stage1_004.hdf5')
-model.save("./output/trained_model_final_004.h5")
+model.save("./output/trained_model_final_005.h5")
 
 # Unfreeze and continue training, to fine-tune.
 # for i in range(len(model.layers)):
