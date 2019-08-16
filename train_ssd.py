@@ -101,12 +101,20 @@ bbox_util = BBoxUtility(NUM_CLASSES, priors)
 # %%
 # key = image_name (no path), value = [xmin, ymin, xmax, ymax]
 gt = get_annotations("./dataset/annotations_raw.txt")
-# TODO: sort this manually
-keys = sorted(gt.keys())
-num_train = int(round(0.8 * len(keys)))
-train_keys = keys[: num_train]
-val_keys = keys[num_train:]
-num_val = len(val_keys)
+
+#MANUAL SORT
+gt_train = get_annotations("./dataset/annotations_train.txt")
+gt_val = get_annotations("./dataset/annotations_val.txt")
+train_keys = sorted(gt_train.keys())
+val_keys = sorted(gt_val.keys())
+gt = gt_train
+gt.update(gt_val) # combine dict
+# AUTO SORT
+# keys = sorted(gt.keys())
+# num_train = int(round(0.8 * len(keys)))
+# train_keys = keys[: num_train]
+# val_keys = keys[num_train:]
+# num_val = len(val_keys)
 
 
 # %%
