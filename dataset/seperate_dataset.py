@@ -1,7 +1,10 @@
+import os
+import shutil
 
 def count_instances(annotations):
-    labels = ["pedestrian", "cyclist", "on-call", "on-mobile", "facing_backwards"]
-    stats = {} 
+    labels = ["pedestrian", "cyclist", "on-call",
+              "on-mobile", "facing_backwards"]
+    stats = {}
     img_objects = {}
     for line in open(annotations):
         img, meta = line.split(" ")
@@ -11,39 +14,52 @@ def count_instances(annotations):
             stats[lbl] = 1
         else:
             stats[lbl] += 1
-        
+
         if img not in img_objects:
             img_objects[img] = {"TotalObj": 1, "Labels": [lbl]}
         else:
             img_objects[img]["TotalObj"] += 1
             img_objects[img]["Labels"].append(lbl)
     return stats, img_objects
-        
+
+def add_val_img(img_path,img, x1, y1, x2, y2, class_no):
+    '''
+    make a copy of image with "val_" in the name for validation purposes
+
+    '''
+    # make a copy of image
+    new_img = "val_"+img
+    shutil.copy(os.path.join(img_path, img),os.path.join(img_path, new_img)) # make a copy of img
+    new_line = f"{new_img},{x1},{y1},{x2},{y2},{class_no}"
+    return new_line
+
 def get_train(annotations, maxTrain=100):
-    labels = ["pedestrian", "cyclist", "on-call", "on-mobile", "facing_backwards"]
+    labels = ["pedestrian", "cyclist", "on-call",
+              "on-mobile", "facing_backwards"]
     train = {}
     val = {}
     for line in open(annotations):
         img, meta = line.split(" ")
-        img = img.replace("images/","") # remove path
+        img = img.replace("images/", "")  # remove path
         x1, y1, x2, y2, class_no = meta.split(",")
-        class_no = int(class_no) +1 # account for background = 0
+        class_no = int(class_no)
         new_line = f"{img},{x1},{y1},{x2},{y2},{class_no}"
-        if class_no == 5:
+        if class_no == 4:
             continue
 
         if class_no not in train:
-            train[class_no] = [new_line] 
+            train[class_no] = [new_line]
         else:
             if len(train[class_no]) < 100:
-                train[class_no].append(new_line) # add to training
+                train[class_no].append(new_line)  # add to training
             elif class_no not in val:
-                val[class_no] = [new_line] 
+                new_line = add_val_img("images/", img, x1, y1, x2, y2, class_no)
+                val[class_no] = [new_line]
             else:
+                new_line = add_val_img("images/", img, x1, y1, x2, y2, class_no)
                 val[class_no].append(new_line)
 
     return train, val
-
 
 
 if __name__ == "__main__":
@@ -56,12 +72,12 @@ if __name__ == "__main__":
     for t in train_annot:
         print("{0} : {1}".format(t, len(train_annot[t])))
 
-    with open('annotations.txt', 'w') as f:
+    with open('annotations_train.txt', 'w') as f:
         for lbl in train_annot:
             for dt in train_annot[lbl]:
-                f.write(dt +"\n")
+                f.write(dt + "\n")
 
     with open('annotations_val.txt', 'w') as f:
         for lbl in val_annot:
             for dt in val_annot[lbl]:
-                f.write(dt +"\n")
+                f.write(dt + "\n")
