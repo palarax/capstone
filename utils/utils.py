@@ -10,9 +10,9 @@ def get_annotations(annot_raw):
     for line in open(annot_raw):
         if "img_144" in line:
             continue # skip grayscale images
-        img, meta = line.split(" ")
-        img = img.replace("images/", "")  # remove path
-        x1, y1, x2, y2, class_no = meta.split(",")
+        # img, meta = line.split(" ")
+        # img = img.replace("images/", "")  # remove path
+        img, x1, y1, x2, y2, class_no = line.split(",")
         class_no = int(class_no) + 1  # account for background
         if class_no == 5:
             continue  # skip this class

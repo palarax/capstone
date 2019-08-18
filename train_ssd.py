@@ -64,10 +64,11 @@ new_model = SSD(input_shape, num_classes=NUM_CLASSES)
 model.load_weights(
     './weights/VGG16.h5', by_name=True)
 
+# model.load_weights("./output/checkpoints/trained_weights_stage1_006.hdf5",by_name=True)
+
 # l_names = get_weights_layers("./weights/MobileNetSSD300weights_voc_2007_class20.hdf5")
 # print(l_names)
 # isWeightsChanged(model, new_model)
-
 # model.summary()
 # for L in model.layers:
 #     print(str(L.name))
@@ -87,7 +88,6 @@ for L in model.layers:
         # print(L.name)
         L.trainable = False
 
-# TODO: load entire model, rather than just weights. Might require custom objects
 
 # %%
 #######################################################################
@@ -99,10 +99,7 @@ priors = pickle.load(open('priorFiles/prior_boxes_ssd300VGG16.pkl', 'rb'))
 bbox_util = BBoxUtility(NUM_CLASSES, priors)
 
 # %%
-# key = image_name (no path), value = [xmin, ymin, xmax, ymax]
-gt = get_annotations("./dataset/annotations_raw.txt")
-
-#MANUAL SORT
+#MANUAL SORT | key = image_name (no path), value = [xmin, ymin, xmax, ymax]
 gt_train = get_annotations("./dataset/annotations_train.txt")
 gt_val = get_annotations("./dataset/annotations_val.txt")
 train_keys = sorted(gt_train.keys())
@@ -130,11 +127,11 @@ gen = Generator(gt, bbox_util, batch_size, path_prefix,
 #   Setup callbacks and monitoring
 #######################################################################
 def schedule(epoch, decay=0.9):
-    if epoch < 12:
+    if epoch < 5:
         return base_lr
-    elif epoch < 20:
+    elif epoch < 10:
         return base_lr
-    elif epoch < 25:
+    elif epoch < 15:
         return base_lr * decay**(epoch/2)
     else:
         return base_lr * decay**(epoch)  # 0.00001
@@ -147,7 +144,7 @@ early_stopping = EarlyStopping(
     monitor='val_loss', patience=5, verbose=1)  # TODO: fix this
 
 # TODO: Fix Tensorboard variables
-tensorboard = TensorBoard(log_dir='./logs/tensorboard/005', write_images=True)
+tensorboard = TensorBoard(log_dir='./logs/tensorboard/007', write_images=True)
 lrSchedular = LearningRateScheduler(schedule)
 
 # %%
@@ -155,8 +152,7 @@ lrSchedular = LearningRateScheduler(schedule)
 #  Instantiate optimizer, SDD loss function and Compile model
 #######################################################################
 # base_lr = 3e-4
-# NOTE: 1e-2 is shit
-base_lr = 4e-3
+base_lr = 4.7e-3
 optim = Adam(lr=base_lr)
 # adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0) # example for SDD7
 # optim = RMSprop(lr=base_lr)
@@ -170,7 +166,7 @@ model.compile(optimizer=optim,
 #######################################################################
 
 # Train with frozen layers first, to get a stable loss.
-nb_epoch = 12
+nb_epoch = 4
 callbacks = [tensorboard, model_checkpoint, lrSchedular]
 # callbacks = [tensorboard, model_checkpoint, lrSchedular, early_stopping]
 history = model.fit_generator(gen.generate(True), gen.train_batches,
@@ -182,28 +178,29 @@ history = model.fit_generator(gen.generate(True), gen.train_batches,
                               validation_steps=gen.val_batches)
 #       nb_val_samples=gen.val_batches,
 #       nb_worker=1)
-model.save_weights('./output/checkpoints/trained_weights_stage1_005.hdf5')
-# model.save("./output/trained_model_final_005.h5")
+# model.save_weights('./output/checkpoints/trained_weights_stage1_007.hdf5')
 
 # Unfreeze and continue training, to fine-tune.
-for i in range(len(model.layers)):
-    model.layers[i].trainable = True
+# for i in range(len(model.layers)):
+#     model.layers[i].trainable = True
+# model.compile(optimizer=optim,
+#               loss=MultiboxLoss(NUM_CLASSES, neg_pos_ratio=2.0).compute_loss, metrics=['acc'])
 
-base_lr = 3e-4
-optim = Adam(lr=base_lr)
-callbacks = [tensorboard, model_checkpoint, lrSchedular, early_stopping]
+# base_lr = 3e-4
+# optim = Adam(lr=base_lr)
+# callbacks = [tensorboard, model_checkpoint, lrSchedular, early_stopping]
 
-history = model.fit_generator(gen.generate(True), gen.train_batches,
-                              verbose=1,
-                              epochs=nb_epoch+50,
-                              initial_epoch=nb_epoch,
-                              callbacks=callbacks,
-                              validation_data=gen.generate(False),
-                              validation_steps=gen.val_batches)
+# history = model.fit_generator(gen.generate(True), gen.train_batches,
+#                               verbose=1,
+#                               epochs=nb_epoch+50,
+#                               initial_epoch=0,
+#                               callbacks=callbacks,
+#                               validation_data=gen.generate(False),
+#                               validation_steps=gen.val_batches)
 #       nb_val_samples=gen.val_batches,
 #       nb_worker=1)
-model.save_weights('./output/trained_weights_final_005.hdf5')
-model.save("./output/trained_model_final_005.h5")
+# model.save_weights('./output/trained_weights_final_006.hdf5')
+# model.save("./output/trained_model_final_006.h5")
 
 #######################################################################
 #   TODO: Confirm if this is valiation
