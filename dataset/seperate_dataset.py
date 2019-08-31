@@ -36,21 +36,28 @@ def add_val_img(img_path,img, x1, y1, x2, y2, class_no):
 def get_train(annotations, maxTrain=100):
     labels = ["pedestrian", "cyclist", "on-call",
               "on-mobile", "facing_backwards"]
+    # classes = ['background','cyclist', 'risk']
     train = {}
     val = {}
     for line in open(annotations):
         img, meta = line.split(" ")
         img = img.replace("images/", "")  # remove path
-        x1, y1, x2, y2, class_no = meta.split(",")
-        class_no = int(class_no)
-        new_line = f"{img},{x1},{y1},{x2},{y2},{class_no}"
-        if class_no == 4:
+        x1, y1, x2, y2, nom = meta.split(",")
+        class_no = int(nom)
+        if class_no == 4 or class_no == 0:
             continue
+        elif class_no == 2 or class_no == 3:
+            class_no = 2
+
+        new_line = f"{img},{x1},{y1},{x2},{y2},{class_no}"
 
         if class_no not in train:
             train[class_no] = [new_line]
         else:
-            if len(train[class_no]) < 100:
+            # train[class_no].append(new_line)  # add to training
+            if len(train[class_no]) < 180 and class_no == 2:
+                train[class_no].append(new_line)  # add to training
+            if len(train[class_no]) < 135 and class_no == 1:
                 train[class_no].append(new_line)  # add to training
             elif class_no not in val:
                 new_line = add_val_img("images/", img, x1, y1, x2, y2, class_no)
