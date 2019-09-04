@@ -251,35 +251,6 @@ def _main_(args):
                             callbacks=[tensorboard, checkpoint, reduce_lr, early_stopping])
         model.save(config["train"]["model_stages"] + 'trained_model_stage_2.h5')
 
-# do more training
-    if True:
-        for i in range(len(model.layers)):
-            model.layers[i].trainable = True
-        # recompile to apply the change
-        model.compile(optimizer=Adam(lr=1e-5),
-                      loss='mean_squared_error',
-                      metrics=['mean_squared_error'])
-        print('[INFO] More refined training')
-
-        batch_size = 2  # note that more GPU memory is required after unfreezing the body
-        print('[INFO] Train on {} samples, val on {} samples, with batch size {}.'.format(
-            num_train, num_val, batch_size))
-        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
-                            steps_per_epoch=max(1, num_train//batch_size),
-                            validation_data=data_generator_wrapper(
-                                lines[num_train:], batch_size, input_shape, anchors, num_classes),
-                            validation_steps=max(1, num_val//batch_size),
-                            initial_epoch=config["train"]["epochs"] +50,
-                            epochs=config["train"]["epochs"]+100,
-                            callbacks=[tensorboard, checkpoint, reduce_lr, early_stopping])
-        model.save(config["train"]["model_stages"] + 'train_model_final.h5')
-    
-    derived_model = Model(model.input[0], [
-                          model.layers[249].output, model.layers[250].output, model.layers[251].output])
-
-    derived_model.save(config["train"]["model_stages"] + "derived_model.h5")
-    plot_model(derived_model, to_file='output/derived_model.png',
-               show_shapes=True)
 
 
 if __name__ == '__main__':
