@@ -179,7 +179,8 @@ def _main_(args):
     ###############################
     print("[INFO] Creating Model")
 
-    input_shape = (416, 416)  # multiple of 32, hw
+    # input_shape = (416, 416)  # multiple of 32, hw
+    input_shape = (608, 608)
 
     is_tiny_version = len(anchors) == 6  # default setting
     if is_tiny_version:
@@ -252,7 +253,7 @@ def _main_(args):
         model.fit_generator(data_generator_wrapper(train, batch_size, input_shape, anchors, num_classes),
                             steps_per_epoch=max(1, len(train)//batch_size),
                             validation_data=data_generator_wrapper(
-                                len(val), batch_size, input_shape, anchors, num_classes),
+                                val, batch_size, input_shape, anchors, num_classes),
                             validation_steps=max(1, len(val)//batch_size),
                             initial_epoch=config["train"]["epochs"],
                             epochs=config["train"]["epochs"]+10,

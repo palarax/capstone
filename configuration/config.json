@@ -14,7 +14,8 @@
         "anchors":               [13,55, 34,118, 51,217, 73,299, 84,204, 110,362, 112,270, 173,349, 278,362],
         "labels1":               ["pedestrian", "cyclist", "on-call", "on-mobile"],
         "labels":               ["background", "cyclist", "risk"],
-        "weights":              "configuration/yolov3.h5"
+        "weights":              "configuration/yolo.h5",
+        "weights2":              "configuration/pedestrian_detection_model.h5"
     },
 
     "train": {
