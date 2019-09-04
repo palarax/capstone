@@ -173,7 +173,6 @@ def _main_(args):
     ###############################
     print("[INFO] Creating Model")
 
-    # TODO: figure out what this does
     input_shape = (416, 416)  # multiple of 32, hw
 
     is_tiny_version = len(anchors) == 6  # default setting
