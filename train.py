@@ -33,6 +33,10 @@ sess = tf.compat.v1.Session(config=config)
 logger = None
 
 
+def dummy_loss(y_true, y_pred):
+    return tf.sqrt(tf.reduce_sum(y_pred))
+
+
 def setup_logger(log, filename, loglevel, format, dtfmt):
     """Configure logger
     """
@@ -152,7 +156,7 @@ def _main_(args):
     #   Parse the annotations
     ###############################
     print("[INFO] Parsing annotations")
-    annotations = config["train"]["annotations"]
+    # annotations = config["train"]["annotations"]
 
     ##################################
     #   Create validation and training
@@ -160,16 +164,15 @@ def _main_(args):
     print("[INFO] Seperating Training and Validation")
 
     # <dir>/img x1 y1 x2 y2
-    images_dir = './dataset/images/'
+    # images_dir = './dataset/images/'
     val_annot = './dataset/yolo_val.txt'
     train_annot = './dataset/yolo_train.txt'
 
     with open(val_annot) as f:
         val = f.readlines()
-    
+
     with open(train_annot) as f:
         train = f.readlines()
-
 
     ###############################
     #   Create the model
@@ -193,7 +196,7 @@ def _main_(args):
     # For the actual monitoring
     tensorboard = TensorBoard(log_dir=config["train"]["tensorboard_dir"])
     checkpoint = ModelCheckpoint(config["train"]["model_stages"] + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
-                                 monitor='val_loss', save_weights_only=False, save_best_only=True, period=4)
+                                 monitor='val_loss', save_weights_only=False, save_best_only=True, period=5)
     reduce_lr = ReduceLROnPlateau(
         monitor='val_loss', factor=0.01, patience=3, verbose=1)
     early_stopping = EarlyStopping(
@@ -205,11 +208,16 @@ def _main_(args):
     print("[INFO] Start Training")
     # Train with frozen layers first, to get a stable loss.
     # Adjust num epochs to your dataset. This step is enough to obtain a not bad model.
+    optz = Adam(lr=1e-3)
+
     if True:
-        model.compile(optimizer=Adam(lr=1e-3),
-                      loss='mean_squared_error',
-                      metrics=['mean_squared_error'])
+        model.compile(optimizer=optz, loss={
+            # use custom yolo_loss Lambda layer.
+            'yolo_loss': lambda y_true, y_pred: y_pred},
+            metrics=['mean_squared_error'])
+
         batch_size = config["train"]["batch_size"]
+
         print('[INFO] Train on {} samples, val on {} samples, with batch size {}.'.format(
             len(train), len(val), batch_size))
         model.fit_generator(data_generator_wrapper(train, batch_size, input_shape, anchors, num_classes),
@@ -221,18 +229,21 @@ def _main_(args):
                             epochs=config["train"]["epochs"],
                             callbacks=[tensorboard, checkpoint])
         # model.save_weights(log_dir + 'trained_weights_stage_1.h5')
-        model.save(config["train"]["model_stages"] +
-                   'trained_model_stage_1.h5')
+        model.save_weights(config["train"]["model_stages"] +
+                           'trained_model_stage_1.h5')
 
+    optz = Adam(lr=1e-4)
     # Unfreeze and continue training, to fine-tune.
     # Train longer if the result is not good.
     if True:
         for i in range(len(model.layers)):
             model.layers[i].trainable = True
         # recompile to apply the change
-        model.compile(optimizer=Adam(lr=1e-4),
-                      loss='mean_squared_error',
-                      metrics=['mean_squared_error'])
+        model.compile(optimizer=optz, loss={
+            # use custom yolo_loss Lambda layer.
+            'yolo_loss': lambda y_true, y_pred: y_pred},
+            metrics=['mean_squared_error'])
+
         print('[INFO] Unfreeze all of the layers.')
 
         batch_size = 2  # note that more GPU memory is required after unfreezing the body
@@ -244,10 +255,10 @@ def _main_(args):
                                 len(val), batch_size, input_shape, anchors, num_classes),
                             validation_steps=max(1, len(val)//batch_size),
                             initial_epoch=config["train"]["epochs"],
-                            epochs=config["train"]["epochs"]+50,
+                            epochs=config["train"]["epochs"]+10,
                             callbacks=[tensorboard, checkpoint, reduce_lr, early_stopping])
-        model.save(config["train"]["model_stages"] + 'trained_model_stage_2.h5')
-
+        model.save_weights(config["train"]["model_stages"] +
+                           'trained_model_stage_2.h5')
 
 
 if __name__ == '__main__':
