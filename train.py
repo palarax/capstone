@@ -159,14 +159,17 @@ def _main_(args):
     ##################################
     print("[INFO] Seperating Training and Validation")
 
-    val_split = 0.1
-    with open(annotations) as f:
-        lines = f.readlines()
-    np.random.seed(10101)
-    np.random.shuffle(lines)
-    np.random.seed(None)
-    num_val = int(len(lines)*val_split)
-    num_train = len(lines) - num_val
+    # <dir>/img x1 y1 x2 y2
+    images_dir = './dataset/images/'
+    val_annot = './dataset/yolo_val.txt'
+    train_annot = './dataset/yolo_train.txt'
+
+    with open(val_annot) as f:
+        val = f.readlines()
+    
+    with open(train_annot) as f:
+        train = f.readlines()
+
 
     ###############################
     #   Create the model
@@ -182,12 +185,6 @@ def _main_(args):
     else:
         model = create_model(input_shape, anchors, num_classes,
                              freeze_body=2, weights_path=config["model"]["weights"])  # make sure you know what you freeze
-    # architecture + weights + optimizer state
-    # allows to resume from where you left off
-    # model.save('yolo_model_retrain.hdf5')  # creates a HDF5 file 'my_model.h5'
-
-    # Literally outputs an image of a model
-    #plot_model(model, to_file='output/retrained_model.png', show_shapes = True)
 
     ###############################
     #   Monitoring
@@ -214,12 +211,12 @@ def _main_(args):
                       metrics=['mean_squared_error'])
         batch_size = config["train"]["batch_size"]
         print('[INFO] Train on {} samples, val on {} samples, with batch size {}.'.format(
-            num_train, num_val, batch_size))
-        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
-                            steps_per_epoch=max(1, num_train//batch_size),
+            len(train), len(val), batch_size))
+        model.fit_generator(data_generator_wrapper(train, batch_size, input_shape, anchors, num_classes),
+                            steps_per_epoch=max(1, len(train)//batch_size),
                             validation_data=data_generator_wrapper(
-                                lines[num_train:], batch_size, input_shape, anchors, num_classes),
-                            validation_steps=max(1, num_val//batch_size),
+                                val, batch_size, input_shape, anchors, num_classes),
+                            validation_steps=max(1, len(val)//batch_size),
                             initial_epoch=0,
                             epochs=config["train"]["epochs"],
                             callbacks=[tensorboard, checkpoint])
@@ -240,12 +237,12 @@ def _main_(args):
 
         batch_size = 2  # note that more GPU memory is required after unfreezing the body
         print('[INFO] Train on {} samples, val on {} samples, with batch size {}.'.format(
-            num_train, num_val, batch_size))
-        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
-                            steps_per_epoch=max(1, num_train//batch_size),
+            len(train), len(val), batch_size))
+        model.fit_generator(data_generator_wrapper(train, batch_size, input_shape, anchors, num_classes),
+                            steps_per_epoch=max(1, len(train)//batch_size),
                             validation_data=data_generator_wrapper(
-                                lines[num_train:], batch_size, input_shape, anchors, num_classes),
-                            validation_steps=max(1, num_val//batch_size),
+                                len(val), batch_size, input_shape, anchors, num_classes),
+                            validation_steps=max(1, len(val)//batch_size),
                             initial_epoch=config["train"]["epochs"],
                             epochs=config["train"]["epochs"]+50,
                             callbacks=[tensorboard, checkpoint, reduce_lr, early_stopping])

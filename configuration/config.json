@@ -12,7 +12,8 @@
         "max_input_size":       448,
         "anchors1":              [23,93, 47,171, 65,277, 92,345, 96,199, 114,262, 134,365, 186,365, 261,354],
         "anchors":               [13,55, 34,118, 51,217, 73,299, 84,204, 110,362, 112,270, 173,349, 278,362],
-        "labels":               ["pedestrian", "cyclist", "on-call", "on-mobile"],
+        "labels1":               ["pedestrian", "cyclist", "on-call", "on-mobile"],
+        "labels":               ["background", "cyclist", "risk"],
         "weights":              "configuration/yolov3.h5"
     },
 
