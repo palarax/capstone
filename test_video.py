@@ -33,7 +33,7 @@ def setup_log(log_config):
     '''
     with open(log_config, encoding='utf-8-sig') as conf_file:
         jc = json.load(conf_file)
-        logging.config.dictConfig(jc)
+        logging.config.dictConfig(jc["main_app"])
 
 
 def calculate_fps(accum_time, curr_fps, prev_time, fps, image):
@@ -147,7 +147,7 @@ def process_video(model, config, video_path=0):
     if not vid.isOpened():
         raise IOError("Couldn't open webcam or video")
 
-    vid.set(cv2.CAP_PROP_FPS, 30)
+    vid.set(cv2.CAP_PROP_FPS, 40)
 
     while True:
         return_value, frame = vid.read()
