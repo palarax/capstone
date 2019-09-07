@@ -61,7 +61,7 @@ def detect_image(model, frame, vidw, vidh):
                                             img_height=img_height,
                                             img_width=img_width)
 
-    height, width, channels = frame.shape
+    height, width, _ = frame.shape
 
     for box in y_pred_decoded[0]:
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.

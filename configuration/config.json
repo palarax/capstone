@@ -1,48 +1,21 @@
 {
     "logger": {
-        "logger": "trainer",
+        "logger":   "trainer",
         "filename": "log/test.log",
-        "level": "DEBUG",
-        "format": "%(asctime)s %(levelname)s:%(message)s",
-        "datefmt": "%Y-%m-%d %H:%M:%S"
+        "level":    "DEBUG",
+        "format":   "%(asctime)s %(levelname)s:%(message)s",
+        "datefmt":  "%Y-%m-%d %H:%M:%S"
     },
+    
+    "video_path": "",
 
-    "model" : {
-        "min_input_size":       288,
-        "max_input_size":       448,
-        "anchors":              [23,93, 47,171, 65,277, 92,345, 96,199, 114,262, 134,365, 186,365, 261,354],
-        "labels": ["pedestrian", "cyclist", "on-call","on-mobile","facing_back_bb"]
-    },
-
-    "train": {
-        "train_image_folder":   "/home/palarax/Projects/yolo/keras-yolo3/dataset/images/",
-        "train_annot_folder":   "/home/palarax/Projects/yolo/keras-yolo3/dataset/",
-        "cache_name":           "train.pkl",
-
-        "train_times":          8,
-        "batch_size":           8,
-        "learning_rate":        1e-4,
-        "nb_epochs":            30,
-        "warmup_epochs":        3,
-        "ignore_thresh":        0.5,
-        "gpus":                 "1",
-
-        "grid_scales":          [1,1,1],
-        "obj_scale":            5,
-        "noobj_scale":          1,
-        "xywh_scale":           1,
-        "class_scale":          1,
-
-        "tensorboard_dir":      "logs",
-        "saved_weights_name":   "test2.h5",
-        "debug": false  
-    },
-
-    "valid": {
-        "valid_image_folder":   "",
-        "valid_annot_folder":   "",
-        "cache_name":           "",
-
-        "valid_times":          1
+    "model_processing" : {
+        "img_height":           "",
+        "img_width":            "",
+        "labels":               ["background", "cyclist", "risk"],
+        "file":                 "SSD_MODEL.h5",
+        "confidence_thresh":    0.5,
+        "iou_threshold":        0.4
     }
+
 }
