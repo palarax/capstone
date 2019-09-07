@@ -20,9 +20,9 @@ limitations under the License.
 '''
 
 from __future__ import division
+import sys
 import numpy as np
-
-from bounding_box_utils.bounding_box_utils import iou, convert_coordinates
+from ..bounding_box_utils.bounding_box_utils import convert_coordinates
 
 def greedy_nms(y_pred_decoded, iou_threshold=0.45, coords='corners', border_pixels='half'):
     '''

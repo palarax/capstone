@@ -1,4 +1,4 @@
-import os
+# import os
 from timeit import default_timer as timer
 import cv2
 import numpy as np
@@ -8,17 +8,16 @@ from keras.models import load_model
 from keras.preprocessing import image
 from keras.applications.imagenet_utils import preprocess_input
 
-from keras_loss_function.keras_ssd_loss import SSDLoss
+from XAI.keras_loss_function.keras_ssd_loss import SSDLoss
 from XAI.keras_layers.keras_layer_AnchorBoxes import AnchorBoxes
 from XAI.keras_layers.keras_layer_DecodeDetections import DecodeDetections
 from XAI.keras_layers.keras_layer_L2Normalization import L2Normalization
-
 from XAI.ssd_encoder_decoder.ssd_output_decoder import decode_detections_fast
 
 
 def load_ssd_model():
 
-    model_path = 'trained_model.h5'
+    model_path = 'SSD_MODEL.h5'
     # We need to create an SSDLoss object in order to pass that to the model loader.
     ssd_loss = SSDLoss(neg_pos_ratio=3, n_neg_min=0, alpha=1.0)
     K.clear_session()  # Clear previous models from memory.
