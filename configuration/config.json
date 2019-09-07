@@ -5,8 +5,8 @@
         "img_width":            300,
         "labels":               ["background", "cyclist", "risk"],
         "file":                 "SSD_MODEL.h5",
-        "confidence_thresh":    0.5,
-        "iou_threshold":        0.4
+        "confidence_thresh":    0.6,
+        "iou_threshold":        0.3
     }
     
 }

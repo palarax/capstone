@@ -27,12 +27,14 @@ from XAI.ssd_encoder_decoder.ssd_output_decoder import decode_detections_fast
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
+
 def setup_log(log_config):
     '''Setup logging
     '''
     with open(log_config, encoding='utf-8-sig') as conf_file:
         jc = json.load(conf_file)
         logging.config.dictConfig(jc)
+
 
 def calculate_fps(accum_time, curr_fps, prev_time, fps, image):
     '''Calculate current FPS
@@ -59,15 +61,16 @@ def get_color(classes):
     # BGR colors
     BACKGROUND = (0, 0, 0)
     DANGER = (0, 0, 255)  # RED
-    WARNING = (0, 128, 255) # ORANGE
-    CAUTION = (0, 255, 255) # YELLOW
-    NO_IMMEDIATE_DANGER = (255, 0, 0) # BLUE
+    WARNING = (0, 128, 255)  # ORANGE
+    CAUTION = (0, 255, 255)  # YELLOW
+    NO_IMMEDIATE_DANGER = (255, 0, 0)  # BLUE
     return [(0, 0, 0), DANGER, WARNING]
+
 
 def load_ssd_model(model_path="SSD_MODEL.h5"):
     '''Load Pretrained SSD model
     '''
-    logging.info("Loading SSD model %s", model_path)
+    logging.info("Loading SSD model [%s]", model_path)
     # We need to create an SSDLoss object in order to pass that to the model loader.
     ssd_loss = SSDLoss(neg_pos_ratio=3, n_neg_min=0, alpha=1.0)
     K.clear_session()  # Clear previous models from memory.
@@ -76,6 +79,7 @@ def load_ssd_model(model_path="SSD_MODEL.h5"):
                                                    'DecodeDetections': DecodeDetections,
                                                    'compute_loss': ssd_loss.compute_loss})
     return model
+
 
 def get_prediction(model, frame, confidence_thresh, iou_threshold, img_height=300, img_width=300):
     '''Get model prediction
@@ -94,18 +98,18 @@ def get_prediction(model, frame, confidence_thresh, iou_threshold, img_height=30
                                   img_height=img_height,
                                   img_width=img_width)
 
+
 def draw_objects(prediction, frame, classes, img_height=300, img_width=300):
     '''Draw objects in image frame
     '''
-    class_colors = [[0, 0, 0],[0, 128, 255],[0, 0, 255]]
+    class_colors = [[0, 0, 0], [0, 128, 255], [0, 0, 255]]
     height, width, _ = frame.shape
-
     for obj in prediction[0]:
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
         # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax
         label = '{}: {:.2f}'.format(classes[int(obj[0])], obj[1])
         conf = int(obj[1])
-
+        logging.debug("IDENTIFIED: Class [%s] Conf [%d] ", obj[0], obj[1])
         xmin = int(round(obj[2] * width / img_width))
         ymin = int(round(obj[3] * height / img_height))
         xmax = int(round(obj[4] * width / img_width))
@@ -122,10 +126,12 @@ def draw_objects(prediction, frame, classes, img_height=300, img_width=300):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
     return frame
 
+
 def process_video(model, config, video_path=0):
     '''Process video or camera stream
     video_path: file or (0 or -1) for video stream
     '''
+    logging.info("Video Processing Initialized")
     confidence_thresh = config["confidence_thresh"]
     iou_threshold = config["iou_threshold"]
     img_height = config["img_height"]
@@ -151,7 +157,7 @@ def process_video(model, config, video_path=0):
 
         predictions = get_prediction(
             model, frame, confidence_thresh, iou_threshold, img_height, img_width)
-        
+
         # TODO: implement IoU
         # TODO: implement risk analysis
         image = draw_objects(

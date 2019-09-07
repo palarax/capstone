@@ -21,7 +21,7 @@
             "stream": "ext://sys.stdout"
         },
         "file_handler": {
-            "level": "DEBUG",
+            "level": "INFO",
             "formatter": "brief",
             "class": "logging.handlers.WatchedFileHandler",
             "filename": "logs/processing.log",
@@ -31,14 +31,14 @@
     },
     "loggers": {
         "": {
-            "level": "INFO",
+            "level": "DEBUG",
             "handlers": [
                 "console",
                 "file_handler"
             ]
         },
         "__main__": {
-            "level": "INFO",
+            "level": "DEBUG",
             "handlers": [
                 "console",
                 "file_handler"
