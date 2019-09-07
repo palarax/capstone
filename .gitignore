@@ -4,9 +4,9 @@ logs/
 results/
 temp/
 test/
-
+dataset/
 # ignore large assets
-*.mp4
+
 
 # ignore large models
 *.h5
