@@ -1,14 +1,5 @@
 {
-    "logger": {
-        "logger":   "trainer",
-        "filename": "log/test.log",
-        "level":    "DEBUG",
-        "format":   "%(asctime)s %(levelname)s:%(message)s",
-        "datefmt":  "%Y-%m-%d %H:%M:%S"
-    },
-    
     "video_path": "",
-
     "model_processing" : {
         "img_height":           "",
         "img_width":            "",

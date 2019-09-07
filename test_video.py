@@ -1,7 +1,12 @@
 # import os
 from timeit import default_timer as timer
-import cv2
+import os
+import json
+import logging
+import logging.config
 import numpy as np
+import cv2
+import tensorflow as tf
 
 from keras import backend as K
 from keras.models import load_model
@@ -14,21 +19,30 @@ from XAI.keras_layers.keras_layer_DecodeDetections import DecodeDetections
 from XAI.keras_layers.keras_layer_L2Normalization import L2Normalization
 from XAI.ssd_encoder_decoder.ssd_output_decoder import decode_detections_fast
 
+# TF debug
+# 0 = all messages are logged (default behavior)
+# 1 = INFO messages are not printed
+# 2 = INFO and WARNING messages are not printed
+# 3 = INFO, WARNING, and ERROR messages are not printed
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
-def load_ssd_model():
-
-    model_path = 'SSD_MODEL.h5'
+def load_ssd_model(model_path="SSD_MODEL.h5"):
+    '''Load Pretrained SSD model
+    '''
+    logging.info(f"Loading SSD model [{model_path}]")
     # We need to create an SSDLoss object in order to pass that to the model loader.
     ssd_loss = SSDLoss(neg_pos_ratio=3, n_neg_min=0, alpha=1.0)
     K.clear_session()  # Clear previous models from memory.
     model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
                                                    'L2Normalization': L2Normalization,
                                                    'DecodeDetections': DecodeDetections,
-                                                   'compute_loss': ssd_loss.compute_loss})
+                                                   'compute_loss': ssd_loss.compute_loss})                                     
     return model
 
-
 def get_fps(accum_time, curr_fps, prev_time, fps):
+    '''Calculate current FPS
+    '''
     curr_time = timer()
     exec_time = curr_time - prev_time
     prev_time = curr_time
@@ -39,7 +53,6 @@ def get_fps(accum_time, curr_fps, prev_time, fps):
         fps = "FPS: " + str(curr_fps)
         curr_fps = 0
     return accum_time, curr_fps, prev_time, fps
-
 
 def detect_image(model, frame, vidw, vidh):
     img_height = 300
@@ -124,6 +137,19 @@ def detect_video(model, video_path, output_path="output"):
     cv2.destroyAllWindows()
 
 
-if __name__ == "__main__":
+def main(config_file="configuration/log_config.json"):
+    """ Main Function
+    """
+    with open(config_file, encoding='utf-8-sig') as json_config:
+        config = json.load(json_config)
+        logging.config.dictConfig(config)
+
+    with open(config_file, encoding='utf-8-sig') as json_config:
+        config = json.load(json_config)
+        
     model = load_ssd_model()
     detect_video(model, "dataset/test.mp4")
+
+if __name__ == "__main__":
+    main()
+
