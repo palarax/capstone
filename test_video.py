@@ -108,8 +108,8 @@ def draw_objects(prediction, frame, classes, img_height=300, img_width=300):
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
         # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax
         label = '{}: {:.2f}'.format(classes[int(obj[0])], obj[1])
-        conf = int(obj[1])
-        logging.debug("IDENTIFIED: Class [%s] Conf [%d] ", obj[0], obj[1])
+        conf = float("{:.2f}".format(obj[1]))
+        logging.debug("IDENTIFIED: Class [%s] Conf [%.2f] ", classes[int(obj[0])], obj[1])
         xmin = int(round(obj[2] * width / img_width))
         ymin = int(round(obj[3] * height / img_height))
         xmax = int(round(obj[4] * width / img_width))
@@ -158,7 +158,8 @@ def process_video(model, config, video_path=0):
         predictions = get_prediction(
             model, frame, confidence_thresh, iou_threshold, img_height, img_width)
 
-        # TODO: implement IoU
+        # TODO: implement tracking
+        # TODO: implement IoU analysis
         # TODO: implement risk analysis
         image = draw_objects(
             predictions, frame, class_labels, img_height, img_width)
