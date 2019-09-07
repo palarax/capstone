@@ -1,12 +1,12 @@
 {
-    "video_path": "",
+    "video_path": "dataset/test.mp4",
     "model_processing" : {
-        "img_height":           "",
-        "img_width":            "",
+        "img_height":           300,
+        "img_width":            300,
         "labels":               ["background", "cyclist", "risk"],
         "file":                 "SSD_MODEL.h5",
         "confidence_thresh":    0.5,
         "iou_threshold":        0.4
     }
-
+    
 }
