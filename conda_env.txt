@@ -6,5 +6,7 @@ conda install -c anaconda pandas
 
 # PIL
 conda install -c anaconda pillow
-
 conda install -c conda-forge tensorboard
+
+# CV2 and Multitracker
+pip install opencv-contrib-python

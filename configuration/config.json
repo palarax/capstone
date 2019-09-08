@@ -1,5 +1,7 @@
 {
     "video_path": "dataset/test.mp4",
+    "video_path2": "dataset/on_motorbike.mp4",
+    "stream_path": "http://10.0.0.28:8080/video",
 
     "database": {
         "name": "./database/xai_db.json",
@@ -16,6 +18,6 @@
         ],
         "file": "SSD_MODEL.h5",
         "confidence_thresh": 0.6,
-        "iou_threshold": 0.3
+        "iou_threshold": 0.2
     }
 }
