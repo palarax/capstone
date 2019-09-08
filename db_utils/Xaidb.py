@@ -1,15 +1,14 @@
 import logging
-from tinydb import TinyDB
+from tinydb import TinyDB, Query, where
+from tinydb.operations import delete, increment
 from tinydb.database import Table, StorageProxy, Document
-from tinydb import Query
-
 # Tables: Counter, Images | Signals | Risks
 
 # Risks
 # id, class, img, start, end, xmin, ymin, xmax , ymax
 
 # Signals
-# name, color_arr
+# type, color_arr
 # ======================
 # BACKGROUND = (0, 0, 0)
 # DANGER = (0, 0, 255)  # RED
@@ -18,10 +17,11 @@ from tinydb import Query
 # NO_IMMEDIATE_DANGER = (255, 0, 0)  # BLUE
 
 # Images
-# name, 
+# name,
 
 # Counter
-# img, risk, 
+# img, risk,
+
 
 class Xaidb:
     def __init__(self, db_name):
@@ -30,8 +30,35 @@ class Xaidb:
     def get_tiny_instance(self):
         return self.db
 
-    def create_table(self, name):
-        logging.info("create table")
-        self.db.table(name)
+    def get_all_signals(self):
+        logging.debug("[Xaidb] Getting all signal classifications")
+        signals = {}
+        for sig in self.db.table('Signals').all():
+            signals[sig["type"]] = sig["colour"]
+        return signals
 
+    def get_signal(self, name):
+        logging.debug("[Xaidb] Getting Signal [%s]", name)
+        table = self.db.table('Signals')
+        sig = table.search(where('type') == name)[0]
+        return {sig["type"]: sig["colour"]}
 
+    def get_image_counter(self):
+        logging.debug("[Xaidb] Getting Image Counter")
+        table = self.db.table('Counter').all()
+        return table[0]["Image"]
+
+    def increment_image_counter(self):
+        logging.debug("[Xaidb] Incrementing Image Counter")
+        table = self.db.table('Counter')
+        table.update(increment("Image"), doc_ids=[1])
+
+    def get_risk_counter(self):
+        logging.debug("[Xaidb] Getting Risk Counter")
+        table = self.db.table('Counter').all()
+        return table[0]["Risk"]
+
+    def increment_risk_counter(self):
+        logging.debug("[Xaidb] Incrementing Risk Counter")
+        table = self.db.table('Counter')
+        table.update(increment("Risk"), doc_ids=[1])
