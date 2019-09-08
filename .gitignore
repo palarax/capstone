@@ -3,7 +3,7 @@ datasets/
 logs/
 results/
 temp/
-test/
+tests/*.log
 dataset/
 # ignore large assets
 

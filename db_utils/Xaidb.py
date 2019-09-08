@@ -24,6 +24,9 @@ from tinydb.database import Table, StorageProxy, Document
 
 
 class Xaidb:
+    '''Database for XAI. This provides a wrapper around the chosen database
+    which is tinydb in this case
+    '''
     def __init__(self, db_name):
         self.db = TinyDB(db_name)
 

@@ -20,6 +20,8 @@ from XAI.keras_layers.keras_layer_DecodeDetections import DecodeDetections
 from XAI.keras_layers.keras_layer_L2Normalization import L2Normalization
 from XAI.ssd_encoder_decoder.ssd_output_decoder import decode_detections_fast
 
+from utils.utils import distance_to_object
+from db_utils.Xaidb import Xaidb
 from centroidtracker.centroidtracker import CentroidTracker
 
 # TF debug
@@ -135,6 +137,8 @@ def draw_objects(prediction, frame, classes, img_height=300, img_width=300):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
     return boxes
 
+def analyse_risk():
+    raise NotImplementedError("Stub")
 
 def process_video(model, config, video_path=0, skip=1):
     '''Process video or camera stream
@@ -173,10 +177,11 @@ def process_video(model, config, video_path=0, skip=1):
         if not return_value:
             break
 
-        if int(vid.get(cv2.CAP_PROP_POS_FRAMES)) % skip == 0: # every 3 frames
+        if int(vid.get(cv2.CAP_PROP_POS_FRAMES)) % skip == 0:  # every 3 frames
             predictions = get_prediction(
                 model, frame, confidence_thresh, iou_threshold, img_height, img_width)
 
+            analyse_risk()
             # TODO: implement tracking
             # TODO: implement IoU analysis
             # TODO: implement risk analysis
@@ -194,8 +199,9 @@ def process_video(model, config, video_path=0, skip=1):
                 cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 logging.debug(centroid)
-                cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
-        
+                cv2.circle(
+                    frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+
         # Calculate and draw FPS
         accum_time, curr_fps, prev_time, fps = calculate_fps(
             accum_time, curr_fps, prev_time, fps, frame)
