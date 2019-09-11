@@ -8,3 +8,4 @@ conda install -c anaconda pandas
 conda install -c anaconda pillow
 
 conda install -c conda-forge tensorboard
+conda install -c michael_wild opencv-contrib

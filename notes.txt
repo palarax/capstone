@@ -1,8 +1,10 @@
 Cheeky guide
-https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46
+https://github.com/apoorvavinod/Real_time_Object_detection_and_tracking/blob/master/src/main.py
 
-https://github.com/matterport/Mask_RCNN
-https://github.com/karolmajek/Mask_RCNN
+another technique
+https://medium.com/@adamaulia/object-tracking-using-opencv-python-windows-616fb23da720
+
+# add pedestrians as another class
 
 Papers
 https://arxiv.org/pdf/1801.08234.pdf
@@ -10,15 +12,3 @@ https://arxiv.org/pdf/1809.04288.pdf
 https://link.springer.com/chapter/10.1007/978-3-319-59147-6_21
 https://www.researchgate.net/publication/317801679_Recognizing_Pedestrian_Direction_Using_Convolutional_Neural_Networks
 
-## ideas
-Look for people taking photos
-People calling
-Tourists
-
-
-
-    # https://www.kaggle.com/venuraja79/using-transfer-learning-with-keras
-    # https://www.pyimagesearch.com/2019/05/20/transfer-learning-with-keras-and-deep-learning/
-    # defineModel(5)
-    # https://towardsdatascience.com/transfer-learning-and-image-classification-using-keras-on-kaggle-kernels-c76d3b030649
-    # https://www.pyimagesearch.com/2018/05/07/multi-label-classification-with-keras/
