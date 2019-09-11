@@ -3,7 +3,7 @@
     "model_processing" : {
         "img_height":           300,
         "img_width":            300,
-        "labels":               ["background", "cyclist", "risk"],
+        "labels":               ["background", "cyclist", "risk", "person"],
         "file":                 "SSD_MODEL.h5",
         "confidence_thresh":    0.5,
         "iou_threshold":        0.4

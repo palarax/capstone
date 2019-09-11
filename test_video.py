@@ -178,7 +178,8 @@ def main(log_config="configuration/log_config.json", main_config="configuration/
         config = json.load(conf_file)
     model = load_ssd_model(config["model_processing"]["file"])
 
-    process_video(model, config["model_processing"], config["video_path"])
+    process_video(model, config["model_processing"])
+    # process_video(model, config["model_processing"], config["video_path"])
 
 
 if __name__ == "__main__":
