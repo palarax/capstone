@@ -5,6 +5,10 @@
     "per_width" : 0.15,
     "focal_length": 489,
 
+    "assets": {
+        "path": "./assets/",
+        "danger": "danger.jpeg"
+    },
     "database": {
         "name": "./database/xai_db.json",
         "image_dir": "./database/img/"

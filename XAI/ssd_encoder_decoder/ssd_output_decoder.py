@@ -443,9 +443,41 @@ def decode_detections_fast(y_pred,
                 boxes[:, 1], kth=boxes.shape[0]-top_k, axis=0)[boxes.shape[0]-top_k:]
             boxes = boxes[top_k_indices]  # ...and keep only those boxes...
         # ...and now that we're done, append the array of final predictions for this batch item to the output list
+
+        # calculate distance to object
+        # calculate ratio of object size compared to image
+        if boxes.size > 0:
+
+            distance = np.array(
+                [distance_to_object(170, (h[5] - h[3]), 1275) for h in boxes])
+
+            def get_ratio(x1, y1, x2, y2): return (
+                (x2-x1) * (y2 - y1)) / (img_width * img_height)
+            ratio = np.array([get_ratio(h[2], h[3], h[4], h[5])
+                              for h in boxes])
+
+            # convert array to columns to add to the boxes
+            distance = distance.reshape(-1, 1)
+            ratio = ratio.reshape(-1, 1)
+            boxes = np.concatenate((boxes, distance, ratio), axis=1)
+
         y_pred_decoded.append(boxes)
 
     return y_pred_decoded
+
+
+def distance_to_object(known_height, object_height, focal_length):
+    '''
+    Using "triangle similarity" or ratio to calculate the
+    distance to an object\n
+    :param int known_height: known height of the object in real life (mm)\n
+    :param int object_height: height of perceived object in pixels\n
+    :return: distance to object in cm
+    '''
+    # focal length = (Height Pixels * distance to object) / actual height
+    distance_cm = (known_height * focal_length) / object_height
+    return distance_cm  # m
+    # raise NotImplementedError("Stub")
 
 ################################################################################################
 # Debugging tools, not relevant for normal use

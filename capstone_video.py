@@ -103,8 +103,29 @@ def get_prediction(model, frame, confidence_thresh, iou_threshold, img_height=30
                                   normalize_coords=True,
                                   img_height=height,
                                   img_width=width)
-                                #   img_height=img_height,
-                                #   img_width=img_width)
+
+
+def transparentOverlay(src, overlay, pos=(0, 0), scale=1):
+    """
+    :param src: Input Color Background Image
+    :param overlay: transparent Image (BGRA)
+    :param pos:  position where the image to be blit.
+    :param scale : scale factor of transparent image.
+    :return: Resultant Image
+    """
+    overlay = cv2.resize(overlay, (0, 0), fx=scale, fy=scale)
+    h, w, _ = overlay.shape  # Size of foreground
+    rows, cols, _ = src.shape  # Size of background Image
+    y, x = pos[0], pos[1]    # Position of foreground/overlay image
+
+    # loop over all pixels and apply the blending equation
+    for i in range(h):
+        for j in range(w):
+            if x+i >= rows or y+j >= cols:
+                continue
+            alpha = float(overlay[i][j][3]/255.0)  # read the alpha channel
+            src[x+i][y+j] = alpha*overlay[i][j][:3]+(1-alpha)*src[x+i][y+j]
+    return src
 
 
 def draw_objects(prediction, frame, classes):
@@ -112,16 +133,18 @@ def draw_objects(prediction, frame, classes):
     '''
     class_colors = [[0, 0, 0], [0, 128, 255], [0, 0, 255]]
     height, width, _ = frame.shape
-
     boxes = []
+
+    icon = cv2.imread("./assets/danger.png", cv2.IMREAD_UNCHANGED)
+    icon = cv2.resize(icon, (60, 60))
+    # Blending the images with 0.3 and 0.7
+
     for obj in prediction[0]:
-
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
-        # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax
+        # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance
 
-        conf = float("{:.2f}".format(obj[1]))
-
-        xmin = int(round(obj[2])) # RAW: int(round(obj[2] * width / img_width))
+        # RAW: int(round(obj[2] * width / img_width))
+        xmin = int(round(obj[2]))
         ymin = int(round(obj[3]))
         xmax = int(round(obj[4]))
         ymax = int(round(obj[5]))
@@ -131,14 +154,12 @@ def draw_objects(prediction, frame, classes):
         logging.debug("Class[%s] Conf[%.2f] xmin[%d] ymin[%d] xmax[%d] ymax[%d]", classes[int(
             obj[0])], obj[1], xmin, ymin, xmax, ymax)
 
-        h = ymax - ymin
-        screen_area = width * height
-        obj_area = (xmax-xmin) * h
-        screen_portion = obj_area / screen_area
-        distance = distance_to_object(170, h, 1275)
-        logging.debug("H[%d] Distance [%f] Portion[%f]",
-                      h, distance, screen_portion)
+        obj_area = (xmax-xmin) * (ymax - ymin)
+        screen_portion = obj_area / (width * height)
+        distance = distance_to_object(170, (obj[5] - obj[3]), 1275)
+        logging.debug("Distance [%f] Portion[%f] Portion2[%f]", obj[6], screen_portion, obj[7])
 
+        conf = float("{:.2f}".format(obj[1]))
         label = '{}: {:.2f}'.format(
             classes[int(obj[0])], obj[1])
 
@@ -151,6 +172,12 @@ def draw_objects(prediction, frame, classes):
         cv2.rectangle(frame, text_top, text_bot, class_colors[int(obj[0])], -1)
         cv2.putText(frame, label, text_pos,
                     cv2.FONT_HERSHEY_SIMPLEX, 0.40, (0, 0, 0), 1)
+
+        x_offset = xmax - 50
+        y_offset = ymin - 50
+
+        frame = transparentOverlay(frame, icon, (x_offset, y_offset))
+
     return boxes
 
 
@@ -158,8 +185,16 @@ def take_action():
     raise NotImplementedError("Stub")
 
 
-def analyse_risk():
-    raise NotImplementedError("Stub")
+def analyse_risk(frame, prediction):
+    height, width, _ = frame.shape
+
+    for obj in prediction[0]:
+        # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
+        # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax
+        xmin = int(round(obj[2]))
+        ymin = int(round(obj[3]))
+        xmax = int(round(obj[4]))
+        ymax = int(round(obj[5]))
 
 
 def process_video(model, config, video_path=0, skip=1):
@@ -182,9 +217,6 @@ def process_video(model, config, video_path=0, skip=1):
     if not vid.isOpened():
         raise IOError("Couldn't open webcam or video")
 
-    # vid.set(cv2.CAP_PROP_FRAME_WIDTH, 450)
-    # vid.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
-    # vid.set(cv2.CAP_PROP_FPS, 40)
     logging.info("Starting Video Stream")
 
     # ==============================
