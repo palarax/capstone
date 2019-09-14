@@ -90,6 +90,7 @@ def get_prediction(model, frame, confidence_thresh, iou_threshold, img_height=30
     '''Get model prediction
     return decoded prediction
     '''
+    height, width, _ = frame.shape
     img = cv2.resize(frame, (img_height, img_width))
     inp_img = [image.img_to_array(img)]
     tmp_inp = np.array(inp_img)
@@ -100,31 +101,46 @@ def get_prediction(model, frame, confidence_thresh, iou_threshold, img_height=30
                                   iou_threshold=iou_threshold,
                                   top_k=200,
                                   normalize_coords=True,
-                                  img_height=img_height,
-                                  img_width=img_width)
+                                  img_height=height,
+                                  img_width=width)
+                                #   img_height=img_height,
+                                #   img_width=img_width)
 
 
-def draw_objects(prediction, frame, classes, img_height=300, img_width=300):
+def draw_objects(prediction, frame, classes):
     '''Draw objects in image frame
     '''
     class_colors = [[0, 0, 0], [0, 128, 255], [0, 0, 255]]
     height, width, _ = frame.shape
+
     boxes = []
     for obj in prediction[0]:
+
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
         # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax
-        label = '{}: {:.2f}'.format(classes[int(obj[0])], obj[1])
+
         conf = float("{:.2f}".format(obj[1]))
 
-        xmin = int(round(obj[2] * width / img_width))
-        ymin = int(round(obj[3] * height / img_height))
-        xmax = int(round(obj[4] * width / img_width))
-        ymax = int(round(obj[5] * height / img_height))
+        xmin = int(round(obj[2])) # RAW: int(round(obj[2] * width / img_width))
+        ymin = int(round(obj[3]))
+        xmax = int(round(obj[4]))
+        ymax = int(round(obj[5]))
 
         boxes.append([xmin, ymin, xmax, ymax])  # record obj box
 
-        logging.debug("Class[%s] Conf[%.2f] xmin[%d] ymin[%d] xmax[%d] xmax[%d]", classes[int(
+        logging.debug("Class[%s] Conf[%.2f] xmin[%d] ymin[%d] xmax[%d] ymax[%d]", classes[int(
             obj[0])], obj[1], xmin, ymin, xmax, ymax)
+
+        h = ymax - ymin
+        screen_area = width * height
+        obj_area = (xmax-xmin) * h
+        screen_portion = obj_area / screen_area
+        distance = distance_to_object(170, h, 1275)
+        logging.debug("H[%d] Distance [%f] Portion[%f]",
+                      h, distance, screen_portion)
+
+        label = '{}: {:.2f}'.format(
+            classes[int(obj[0])], obj[1])
 
         cv2.rectangle(frame, (xmin, ymin), (xmax, ymax),
                       class_colors[int(obj[0])], 3)
@@ -134,11 +150,17 @@ def draw_objects(prediction, frame, classes, img_height=300, img_width=300):
         text_pos = (xmin + 5, ymin)
         cv2.rectangle(frame, text_top, text_bot, class_colors[int(obj[0])], -1)
         cv2.putText(frame, label, text_pos,
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 0), 1)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.40, (0, 0, 0), 1)
     return boxes
+
+
+def take_action():
+    raise NotImplementedError("Stub")
+
 
 def analyse_risk():
     raise NotImplementedError("Stub")
+
 
 def process_video(model, config, video_path=0, skip=1):
     '''Process video or camera stream
@@ -160,6 +182,8 @@ def process_video(model, config, video_path=0, skip=1):
     if not vid.isOpened():
         raise IOError("Couldn't open webcam or video")
 
+    # vid.set(cv2.CAP_PROP_FRAME_WIDTH, 450)
+    # vid.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
     # vid.set(cv2.CAP_PROP_FPS, 40)
     logging.info("Starting Video Stream")
 
@@ -177,30 +201,31 @@ def process_video(model, config, video_path=0, skip=1):
         if not return_value:
             break
 
+        frame = cv2.resize(frame, (1200, 900))
+
         if int(vid.get(cv2.CAP_PROP_POS_FRAMES)) % skip == 0:  # every 3 frames
             predictions = get_prediction(
                 model, frame, confidence_thresh, iou_threshold, img_height, img_width)
 
-            analyse_risk()
+            # analyse_risk()
             # TODO: implement tracking
             # TODO: implement IoU analysis
             # TODO: implement risk analysis
-            boxes = draw_objects(
-                predictions, frame, class_labels, img_height, img_width)
+            boxes = draw_objects(predictions, frame, class_labels)
             # get centroid point of box
             # cX = int((startX + endX) / 2.0)
             # cY = int((startY + endY) / 2.0)
-            objects = ct.update(boxes)
+            # objects = ct.update(boxes)
             # loop over the tracked objects
-            for (objectID, centroid) in objects.items():
-                # draw both the ID of the object and the centroid of the
-                # object on the output frame
-                text = "ID {}".format(objectID)
-                cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                logging.debug(centroid)
-                cv2.circle(
-                    frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+            # for (objectID, centroid) in objects.items():
+            #     # draw both the ID of the object and the centroid of the
+            #     # object on the output frame
+            #     text = "ID {}".format(objectID)
+            #     cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
+            #                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            #     logging.debug(centroid)
+            #     cv2.circle(
+            #         frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
 
         # Calculate and draw FPS
         accum_time, curr_fps, prev_time, fps = calculate_fps(
