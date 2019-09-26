@@ -1,0 +1,51 @@
+{
+    "_default": {},
+    "Signals": {
+        "1": {
+            "type": "background",
+            "colour": [
+                0,
+                0,
+                0
+            ]
+        },
+        "2": {
+            "type": "danger",
+            "colour": [
+                0,
+                0,
+                255
+            ]
+        },
+        "3": {
+            "type": "warning",
+            "colour": [
+                0,
+                128,
+                255
+            ]
+        },
+        "4": {
+            "type": "caution",
+            "colour": [
+                0,
+                255,
+                255
+            ]
+        },
+        "5": {
+            "type": "no_immediate_danger",
+            "colour": [
+                255,
+                0,
+                0
+            ]
+        }
+    },
+    "Counter": {
+        "1": {
+            "Image": 0,
+            "Risk": 0
+        }
+    }
+}

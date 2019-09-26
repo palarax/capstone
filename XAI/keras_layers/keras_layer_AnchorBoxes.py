@@ -232,7 +232,6 @@ class AnchorBoxes(Layer):
             boxes_tensor[:, :, :, [0, 2]] /= self.img_width
             boxes_tensor[:, :, :, [1, 3]] /= self.img_height
 
-        # TODO: Implement box limiting directly for `(cx, cy, w, h)` so that we don't have to unnecessarily convert back and forth.
         if self.coords == 'centroids':
             # Convert `(xmin, ymin, xmax, ymax)` back to `(cx, cy, w, h)`.
             boxes_tensor = convert_coordinates(boxes_tensor, start_index=0, conversion='corners2centroids', border_pixels='half')

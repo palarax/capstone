@@ -1,5 +1,6 @@
 {
     "video_path": "dataset/test.mp4",
+<<<<<<< HEAD
     "model_processing" : {
         "img_height":           300,
         "img_width":            300,
@@ -7,6 +8,27 @@
         "file":                 "SSD_MODEL.h5",
         "confidence_thresh":    0.5,
         "iou_threshold":        0.4
+=======
+    "video_path2": "dataset/on_motorbike.mp4",
+    "stream_path": "http://10.0.0.28:8080/video",
+    "focal_length": 1,
+
+    "database": {
+        "name": "./database/xai_db.json",
+        "image_dir": "./database/img/"
+
+    },
+    "model_processing": {
+        "img_height": 300,
+        "img_width": 300,
+        "labels": [
+            "background",
+            "cyclist",
+            "risk"
+        ],
+        "file": "SSD_MODEL.h5",
+        "confidence_thresh": 0.6,
+        "iou_threshold": 0.2
+>>>>>>> a2d2927093a53c3be1a5eb17ce2f55020832d723
     }
-    
 }
