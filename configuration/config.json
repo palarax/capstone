@@ -6,9 +6,7 @@
     "focal_length": 489,
     "icons_dimensions": 60,
     "database": {
-        "name": "./database/xai_db.json",
-        "image_dir": "./database/img/"
-
+        "name": "./database/xai_db.json"
     },
     "model_processing": {
         "img_height": 300,
