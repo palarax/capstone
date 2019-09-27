@@ -193,14 +193,18 @@ def take_action():
     raise NotImplementedError("Stub")
 
 
-def analyse_risk(id_class, distance, ratio):
+def analyse_risk(id_class, distance, ratio, speed=50):
 
     # Low, Medium, High, Extreme
     classes = ['low', 'medium', 'high']
     # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
     risk = 'medium'
+    if speed == 50:
+        stp_dist = 300
+        if stp_dist > distance:
+            return 'high'
     if float(ratio) > 0.20:
-        risk = 'high'
+        return 'high'
     
     return risk
 
@@ -292,8 +296,8 @@ def main(log_config="configuration/log_config.json", main_config="configuration/
     db = Xaidb(config["database"]["name"])
     configure_icons(db, ICONS, config["icons_dimensions"])
 
-    process_video(model, config["model_processing"])
-    # process_video(model, config["model_processing"], config["video_path"])
+    # process_video(model, config["model_processing"])
+    process_video(model, config["model_processing"], config["video_path"])
 
 
 if __name__ == "__main__":
