@@ -293,8 +293,8 @@ def main(log_config="configuration/log_config.json", main_config="configuration/
     db = Xaidb(config["database"]["name"])
     configure_icons(db, ICONS, config["icons_dimensions"])
 
-    # process_video(model, config["model_processing"])
-    process_video(model, config["model_processing"], config["video_path"])
+    process_video(model, config["model_processing"])
+    # process_video(model, config["model_processing"], config["video_path"])
 
 
 if __name__ == "__main__":

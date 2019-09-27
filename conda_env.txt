@@ -3,6 +3,8 @@ conda install -c anaconda keras-gpu
 conda install -c conda-forge opencv
 conda install -c conda-forge numpy
 conda install -c anaconda pandas
+conda install -c conda-forge tinydb
+conda install -c conda-forge imageio
 
 # PIL
 conda install -c anaconda pillow
@@ -10,4 +12,3 @@ conda install -c conda-forge tensorboard
 
 # CV2 and Multitracker
 pip install opencv-contrib-python
-conda install -c conda-forge tinydb
