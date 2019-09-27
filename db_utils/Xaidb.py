@@ -44,7 +44,7 @@ class Xaidb:
         logging.debug("[Xaidb] Getting Signal [%s]", name)
         table = self.db.table('Signals')
         sig = table.search(where('type') == name)[0]
-        return {sig["type"]: sig["colour"]}
+        return sig["colour"]
 
     def get_image_counter(self):
         logging.debug("[Xaidb] Getting Image Counter")

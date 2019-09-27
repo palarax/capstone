@@ -140,9 +140,7 @@ def draw_objects(prediction, frame, classes):
     boxes = []
 
      # Low, Medium, High, Extreme
-    classes = ['low', 'medium', 'high', 'extreme']
-
-    icon = ICONS["danger"]
+    classes = ['low', 'medium', 'high']
     # Blending the images with 0.3 and 0.7
 
     for obj in prediction[0]:
@@ -154,27 +152,34 @@ def draw_objects(prediction, frame, classes):
         ymin = int(round(obj[3]))
         xmax = int(round(obj[4]))
         ymax = int(round(obj[5]))
+        
+        risk = analyse_risk(obj[0], obj[6], obj[7])
+
+        icon = ICONS[risk]
+        color = db.get_signal(risk)
 
         boxes.append([xmin, ymin, xmax, ymax])  # record obj box
 
-        logging.debug("Class[%s] Conf[%.2f] xmin[%d] ymin[%d] xmax[%d] ymax[%d]", classes[int(
-            obj[0])], obj[1], xmin, ymin, xmax, ymax)
-
+        logging.debug("Class[%s] Conf[%.2f] xmin[%d] ymin[%d] xmax[%d] ymax[%d]", risk, obj[1], xmin, ymin, xmax, ymax)
         logging.debug("Distance [%f] Portion[%f]", obj[6], obj[7])
 
         conf = float("{:.2f}".format(obj[1]))
         label = '{}: {:.2f}'.format(
-            classes[int(obj[0])], obj[1])
+            risk, obj[1])
 
         cv2.rectangle(frame, (xmin, ymin), (xmax, ymax),
-                      class_colors[int(obj[0])], 3)
+                      color, 3)
 
         text_top = (xmin, ymin-10)
         text_bot = (xmin + 80, ymin + 5)
         text_pos = (xmin + 5, ymin)
-        cv2.rectangle(frame, text_top, text_bot, class_colors[int(obj[0])], -1)
+        cv2.rectangle(frame, text_top, text_bot, color, -1)
         cv2.putText(frame, label, text_pos,
                     cv2.FONT_HERSHEY_SIMPLEX, 0.40, (0, 0, 0), 1)
+
+
+        if risk == 'low':
+            continue
 
         x_offset = xmax - 50
         y_offset = ymin - 50
@@ -188,21 +193,16 @@ def take_action():
     raise NotImplementedError("Stub")
 
 
-def analyse_risk(prediction):
+def analyse_risk(id_class, distance, ratio):
 
     # Low, Medium, High, Extreme
-    classes = ['low', 'medium', 'high', 'extreme']
-    for obj in prediction[0]:
-        # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
-        # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
-        obj[0] = 'Medium'
-        distance = obj[6]
-        ratio = obj[7]
-
-        if ratio > 20:
-            obj[0] = 'high'
-
-        # distance from middle
+    classes = ['low', 'medium', 'high']
+    # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
+    risk = 'medium'
+    if float(ratio) > 0.20:
+        risk = 'high'
+    
+    return risk
 
 
 def process_video(model, config, video_path=0, skip=1):
@@ -248,8 +248,6 @@ def process_video(model, config, video_path=0, skip=1):
                 model, frame, confidence_thresh, iou_threshold, img_height, img_width)
             # TODO: implement tracking
 
-            analyse_risk(predictions)
-
             boxes = draw_objects(predictions, frame, class_labels)
             # get centroid point of box
             # cX = int((startX + endX) / 2.0)
@@ -283,6 +281,7 @@ def process_video(model, config, video_path=0, skip=1):
 def main(log_config="configuration/log_config.json", main_config="configuration/config.json"):
     """ Main Function
     """
+    global db
     setup_log(log_config)
     config = {}
     with open(main_config, encoding='utf-8-sig') as conf_file:
