@@ -141,7 +141,7 @@ def draw_objects(prediction, frame, classes):
 
     for obj in prediction[0]:
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
-        # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance
+        # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
 
         # RAW: int(round(obj[2] * width / img_width))
         xmin = int(round(obj[2]))
@@ -154,10 +154,7 @@ def draw_objects(prediction, frame, classes):
         logging.debug("Class[%s] Conf[%.2f] xmin[%d] ymin[%d] xmax[%d] ymax[%d]", classes[int(
             obj[0])], obj[1], xmin, ymin, xmax, ymax)
 
-        obj_area = (xmax-xmin) * (ymax - ymin)
-        screen_portion = obj_area / (width * height)
-        distance = distance_to_object(170, (obj[5] - obj[3]), 1275)
-        logging.debug("Distance [%f] Portion[%f] Portion2[%f]", obj[6], screen_portion, obj[7])
+        logging.debug("Distance [%f] Portion[%f]", obj[6], obj[7])
 
         conf = float("{:.2f}".format(obj[1]))
         label = '{}: {:.2f}'.format(
@@ -186,15 +183,17 @@ def take_action():
 
 
 def analyse_risk(frame, prediction):
-    height, width, _ = frame.shape
 
     for obj in prediction[0]:
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
-        # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax
-        xmin = int(round(obj[2]))
-        ymin = int(round(obj[3]))
-        xmax = int(round(obj[4]))
-        ymax = int(round(obj[5]))
+        # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
+        obj_class = obj[0]
+        distance = obj[6]
+        ratio = obj[7]
+
+        # distance from middle 
+        
+
 
 
 def process_video(model, config, video_path=0, skip=1):
