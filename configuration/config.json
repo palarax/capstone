@@ -4,11 +4,7 @@
     "stream_path": "http://10.0.0.34:8080/video",
     "per_width" : 0.15,
     "focal_length": 489,
-
-    "assets": {
-        "path": "./assets/",
-        "danger": "danger.jpeg"
-    },
+    "icons_dimensions": 60,
     "database": {
         "name": "./database/xai_db.json",
         "image_dir": "./database/img/"

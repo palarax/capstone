@@ -20,7 +20,7 @@ from XAI.keras_layers.keras_layer_DecodeDetections import DecodeDetections
 from XAI.keras_layers.keras_layer_L2Normalization import L2Normalization
 from XAI.ssd_encoder_decoder.ssd_output_decoder import decode_detections_fast
 
-from utils.utils import distance_to_object
+from utils.utils import distance_to_object, configure_icons
 from db_utils.Xaidb import Xaidb
 from centroidtracker.centroidtracker import CentroidTracker
 
@@ -31,6 +31,10 @@ from centroidtracker.centroidtracker import CentroidTracker
 # 3 = INFO, WARNING, and ERROR messages are not printed
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.Session(config=tf.ConfigProto(log_device_placement=True))
+
+# GLOBALS
+db = Xaidb("./database/xai_db.json")
+ICONS = {}
 
 
 def setup_log(log_config):
@@ -135,9 +139,7 @@ def draw_objects(prediction, frame, classes):
     height, width, _ = frame.shape
     boxes = []
 
-    # TODO: keep in memory to speed up
-    icon = cv2.imread("./assets/danger.png", cv2.IMREAD_UNCHANGED)
-    icon = cv2.resize(icon, (60, 60))
+    icon = ICONS["danger"]
     # Blending the images with 0.3 and 0.7
 
     for obj in prediction[0]:
@@ -192,9 +194,7 @@ def analyse_risk(frame, prediction):
         distance = obj[6]
         ratio = obj[7]
 
-        # distance from middle 
-        
-
+        # distance from middle
 
 
 def process_video(model, config, video_path=0, skip=1):
@@ -282,8 +282,10 @@ def main(log_config="configuration/log_config.json", main_config="configuration/
         config = json.load(conf_file)
     model = load_ssd_model(config["model_processing"]["file"])
 
-    process_video(model, config["model_processing"])
-    # process_video(model, config["model_processing"], config["video_path"])
+    configure_icons(db, ICONS, config["icons_dimensions"])
+
+    # process_video(model, config["model_processing"])
+    process_video(model, config["model_processing"], config["video_path"])
 
 
 if __name__ == "__main__":
