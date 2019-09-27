@@ -135,6 +135,7 @@ def draw_objects(prediction, frame, classes):
     height, width, _ = frame.shape
     boxes = []
 
+    # TODO: keep in memory to speed up
     icon = cv2.imread("./assets/danger.png", cv2.IMREAD_UNCHANGED)
     icon = cv2.resize(icon, (60, 60))
     # Blending the images with 0.3 and 0.7
