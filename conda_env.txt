@@ -10,3 +10,4 @@ conda install -c conda-forge tensorboard
 
 # CV2 and Multitracker
 pip install opencv-contrib-python
+conda install -c conda-forge tinydb
