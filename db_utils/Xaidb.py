@@ -65,3 +65,10 @@ class Xaidb:
         logging.debug("[Xaidb] Incrementing Risk Counter")
         table = self.db.table('Counter')
         table.update(increment("Risk"), doc_ids=[1])
+
+    def get_all_icons(self):
+        logging.debug("[Xaidb] Getting all signal icons")
+        icons = {}
+        for sig in self.db.table('Signals').all():
+            icons[sig["type"]] = sig["image"]
+        return icons
