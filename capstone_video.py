@@ -143,6 +143,12 @@ def draw_objects(prediction, frame, classes):
     classes = ['low', 'medium', 'high']
     # Blending the images with 0.3 and 0.7
 
+    leftLine = [(int(width*0.4),height),(int(width*0.4),0)]
+    rightLine = [(int(width*0.6),height),(int(width*0.6),0)]
+
+    cv2.line(frame,leftLine[0],leftLine[1], (255,0,0),2)
+    cv2.line(frame,rightLine[0],rightLine[1], (255,0,0),2)
+
     for obj in prediction[0]:
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
         # [0]class/risk  [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
@@ -234,7 +240,7 @@ def process_video(model, config, video_path=0, skip=1):
     # ==============================
     # Multi tracker init
     # trackers = cv2.MultiTracker_create()
-    ct = CentroidTracker()
+    # ct = CentroidTracker()
     # ==================================
 
     # vid.set(1, 100)  # Skip first few frames cause they are garbage
@@ -296,8 +302,8 @@ def main(log_config="configuration/log_config.json", main_config="configuration/
     db = Xaidb(config["database"]["name"])
     configure_icons(db, ICONS, config["icons_dimensions"])
 
-    # process_video(model, config["model_processing"])
-    process_video(model, config["model_processing"], config["video_path"])
+    process_video(model, config["model_processing"])
+    # process_video(model, config["model_processing"], config["video_path"])
 
 
 if __name__ == "__main__":
