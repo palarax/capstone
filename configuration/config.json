@@ -2,7 +2,7 @@
     "video_path": "dataset/test.mp4",
     "video_path2": "dataset/on_motorbike.mp4",
     "stream_path": "http://10.0.0.34:8080/video",
-    "per_width" : 0.15,
+    "per_width": 0.15,
     "focal_length": 489,
     "icons_dimensions": 60,
     "database": {
@@ -16,7 +16,8 @@
             "cyclist",
             "risk"
         ],
-        "file": "SSD_MODEL.h5",
+        "file1": "SSD_MODEL.h5",
+        "file": "VGG_coco_SSD.h5",
         "confidence_thresh": 0.6,
         "iou_threshold": 0.2
     }

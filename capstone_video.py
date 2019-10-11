@@ -64,18 +64,6 @@ def calculate_fps(accum_time, curr_fps, prev_time, fps, image):
     return accum_time, curr_fps, prev_time, fps
 
 
-def get_color(classes):
-    # TODO: implement through DB
-    # ["background", "cyclist", "risk"],
-    # BGR colors
-    BACKGROUND = (0, 0, 0)
-    DANGER = (0, 0, 255)  # RED
-    WARNING = (0, 128, 255)  # ORANGE
-    CAUTION = (0, 255, 255)  # YELLOW
-    NO_IMMEDIATE_DANGER = (255, 0, 0)  # BLUE
-    return [(0, 0, 0), DANGER, WARNING]
-
-
 def load_ssd_model(model_path="SSD_MODEL.h5"):
     '''Load Pretrained SSD model
     '''
@@ -83,6 +71,7 @@ def load_ssd_model(model_path="SSD_MODEL.h5"):
     # We need to create an SSDLoss object in order to pass that to the model loader.
     ssd_loss = SSDLoss(neg_pos_ratio=3, n_neg_min=0, alpha=1.0)
     K.clear_session()  # Clear previous models from memory.
+
     model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
                                                    'L2Normalization': L2Normalization,
                                                    'DecodeDetections': DecodeDetections,
@@ -132,22 +121,54 @@ def transparentOverlay(src, overlay, pos=(0, 0), scale=1):
     return src
 
 
-def draw_objects(prediction, frame, classes):
+def calculate_iou(boxA, boxB):
+    # determine the (x, y)-coordinates of the intersection rectangle
+    xA = max(boxA[0], boxB[0])
+    yA = max(boxA[1], boxB[1])
+    xB = min(boxA[2], boxB[2])
+    yB = min(boxA[3], boxB[3])
+    # compute the area of intersection rectangle
+    interArea = (xB - xA) * (yB - yA)
+
+    # compute the area of both the prediction and ground-truth
+    # rectangles
+    boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
+    boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
+
+    # compute the intersection over union by taking the intersection
+    # area and dividing it by the sum of prediction + ground-truth
+    # areas - the interesection area
+    iou = interArea / float(boxAArea + boxBArea - interArea)
+
+    # return the intersection over union value
+    return iou
+
+def isInZone(obj, z1, z2):
+    w1 = obj[2]
+    w2 = obj[4]
+
+    if (w1 < z1 < w2) or (w1 < z2 < w2) or (w1 > z1 and w2 < z2):
+        return True
+
+    return False
+
+
+def draw_objects(prediction, frame, classes, portion=0.3):
     '''Draw objects in image frame
     '''
     class_colors = [[0, 0, 0], [0, 128, 255], [0, 0, 255]]
     height, width, _ = frame.shape
     boxes = []
 
-     # Low, Medium, High, Extreme
+    # Low, Medium, High, Extreme
     classes = ['low', 'medium', 'high']
-    # Blending the images with 0.3 and 0.7
+    
+    leftLine = [(int(width*portion), height), (int(width*portion), 0)]
+    rightLine = [(int(width*(1-portion)), height), (int(width*(1-portion)), 0)]
 
-    leftLine = [(int(width*0.4),height),(int(width*0.4),0)]
-    rightLine = [(int(width*0.6),height),(int(width*0.6),0)]
-
-    cv2.line(frame,leftLine[0],leftLine[1], (255,0,0),2)
-    cv2.line(frame,rightLine[0],rightLine[1], (255,0,0),2)
+    # detect_faces_haar(frame)
+    cv2.line(frame,leftLine[0],leftLine[1], (255,0,0),5)
+    cv2.line(frame,rightLine[0],rightLine[1], (255,0,0),5)
 
     for obj in prediction[0]:
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
@@ -158,15 +179,23 @@ def draw_objects(prediction, frame, classes):
         ymin = int(round(obj[3]))
         xmax = int(round(obj[4]))
         ymax = int(round(obj[5]))
-        
-        risk = analyse_risk(obj[0], obj[6], obj[7])
+
+        inz = isInZone(obj, int(width*portion), (int(width*(1-portion)) ) )
+        risk = analyse_risk(obj[0], obj[6], obj[7], inz)
+        # if inz:
+        #     risk = 'high'
+        # else:
+        #     risk = 'medium'
 
         icon = ICONS[risk]
         color = db.get_signal(risk)
+        labels = ['person','bicycle','car','motorcycle','airplane','bus','train','truck','boat','traffic light','fire hydrant','stop sign','parking meter','bench','bird','cat','dog','horse','sheep','cow','elephant','bear','zebra','giraffe','backpack','umbrella','handbag','tie','suitcase','frisbee','skis','snowboard','sports ball','kite','baseball bat','baseball glove','skateboard','surfboard','tennis racket','bottle','wine glass','cup','fork','knife','spoon','bowl','banana','apple','sandwich','orange','broccoli','carrot','hot dog','pizza','donut','cake','chair','couch','potted plant','bed','dining table','toilet','tv','laptop','mouse','remote','keyboard','cell phone','microwave','oven','toaster','sink','refrigerator','book','clock','vase','scissors','teddy bear','hair drier','toothbrush']
+        risk = labels[int(obj[0])]# TODO Remove
 
-        boxes.append([xmin, ymin, xmax, ymax])  # record obj box
+        # boxes.append([xmin, ymin, xmax, ymax])  # record obj box
 
-        logging.debug("Class[%s] Conf[%.2f] xmin[%d] ymin[%d] xmax[%d] ymax[%d]", risk, obj[1], xmin, ymin, xmax, ymax)
+        logging.debug("Class[%s] Conf[%.2f] xmin[%d] ymin[%d] xmax[%d] ymax[%d]",
+                      risk, obj[1], xmin, ymin, xmax, ymax)
         logging.debug("Distance [%f] Portion[%f]", obj[6], obj[7])
 
         conf = float("{:.2f}".format(obj[1]))
@@ -183,7 +212,6 @@ def draw_objects(prediction, frame, classes):
         cv2.putText(frame, label, text_pos,
                     cv2.FONT_HERSHEY_SIMPLEX, 0.40, (0, 0, 0), 1)
 
-
         if risk == 'low':
             continue
 
@@ -195,23 +223,37 @@ def draw_objects(prediction, frame, classes):
     return boxes
 
 
-def take_action():
-    raise NotImplementedError("Stub")
+def detect_faces_haar(frame):
+    face_cascade = cv2.CascadeClassifier(
+        'configuration/haarcascade_frontalface_default.xml')
+    # Convert into grayscale
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # Detect faces
+    # faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=10,
+                                          minSize=(75, 75))
+    # Draw rectangle around the faces
+    for (x, y, w, h) in faces:
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+    # return frame
 
 
-def analyse_risk(id_class, distance, ratio, speed=50):
+def analyse_risk(id_class, distance, ratio, in_zone,speed=50):
 
     # Low, Medium, High, Extreme
     classes = ['low', 'medium', 'high']
     # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
     risk = 'medium'
-    if speed == 50:
-        stp_dist = 300
-        if stp_dist > distance:
-            return 'high'
-    if float(ratio) > 0.20:
+    stp_dist = 300
+    if in_zone:
+        return 'high'
+        
+    if stp_dist > distance:
         return 'high'
     
+    if float(ratio) > 0.20:
+        return 'high'
+
     return risk
 
 
