@@ -108,7 +108,7 @@ def isInZone(obj, z1, z2):
     return False
 
 
-def draw_objects(prediction, frame, portion=0.3):
+def draw_objects(prediction, frame, portion=0.4):
     '''Draw objects in image frame
     '''
     height, width, _ = frame.shape
@@ -118,12 +118,11 @@ def draw_objects(prediction, frame, portion=0.3):
     rightLine = [(int(width*(1-portion)), height), (int(width*(1-portion)), 0)]
 
     # detect_faces_haar(frame)
-    cv2.line(frame, leftLine[0], leftLine[1], (255, 0, 0), 5)
-    cv2.line(frame, rightLine[0], rightLine[1], (255, 0, 0), 5)
+    # cv2.line(frame, leftLine[0], leftLine[1], (255, 0, 0), 5)
+    # cv2.line(frame, rightLine[0], rightLine[1], (255, 0, 0), 5)
 
     for obj in prediction[0]:
-        if int(obj[0]) not in [1,2,3]:
-            t =5
+        if int(obj[0]) not in [1, 2, 4]:
             continue
 
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
@@ -136,7 +135,8 @@ def draw_objects(prediction, frame, portion=0.3):
         ymax = int(round(obj[5]))
 
         inz = isInZone(obj, int(width*portion), (int(width*(1-portion))))
-        risk, danger_level = analyse_risk(obj[0], obj[6], obj[7], inz)
+        risk, danger_level = analyse_risk(
+            obj[0], obj[6], obj[7], inz, (obj[2]-int(width*portion)),(obj[0]-int(width*(1-portion))))
 
         if danger_level == 1:
             # icon = ICONS["low"]
@@ -196,23 +196,30 @@ def detect_faces_haar(frame):
     # return frame
 
 
-def analyse_risk(id_class, distance, ratio, in_zone):
+def analyse_risk(id_class, distance, ratio, in_zone, dist_left, dist_right):
 
     # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
     risk = 'Low Risk'
     danger_level = 1
+    if id_class in [2, 4]:
+        identified = 'motorbike'
+    else:
+        identified = 'person'
 
-    if float(ratio) > 0.12:
+    if float(ratio) > 0.15:
         danger_level = 2
-        risk = "High risk of collision"
+        risk = "WARNING: High risk of collision"
+    elif not in_zone and (abs(dist_left)>40 and abs(dist_left)>40):
+        danger_level = 2
+        risk = "WARNING: High risk of collision"
 
-    if distance > 400 or float(ratio) > 0.5:
+    if distance < 300 or float(ratio) > 0.5:
         danger_level = 3
         risk = "DANGER: Too close"
 
     if in_zone:
         danger_level = 4
-        risk = "DANGER: PERSON IN FRONT"
+        risk = "DANGER: "+identified+" IN FRONT"
 
     return risk, danger_level
 
@@ -245,7 +252,7 @@ def process_video(model, config, video_path=0, skip=1):
         stream = urllib2.urlopen(stream)
         bytes = bytes()
 
-    # vid.set(1, 100)  # Skip first few frames cause they are garbage
+    vid.set(1, 220)  # Skip first few frames cause they are garbage
     while True:
         frame = None
         if not vid.isOpened():
@@ -307,8 +314,8 @@ def main(log_config="configuration/log_config.json", main_config="configuration/
     db = Xaidb(config["database"]["name"])
     configure_icons(db, ICONS, config["icons_dimensions"])
 
-    process_video(model, config["model_processing"])
-    # process_video(model, config["model_processing"], config["video_path"])
+    # process_video(model, config["model_processing"])
+    process_video(model, config["model_processing"], config["video_path2"])
 
 
 if __name__ == "__main__":

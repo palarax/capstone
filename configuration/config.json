@@ -16,7 +16,7 @@
             "cyclist",
             "risk"
         ],
-        "file": "ORIGINAL_COCO.h5",
+        "file": "COCO_Showcase.h5",
         "file1": "SSD_MODEL.h5",
         "confidence_thresh": 0.6,
         "iou_threshold": 0.2
