@@ -123,6 +123,8 @@ def draw_objects(prediction, frame, classes, portion=0.3):
     cv2.line(frame, rightLine[0], rightLine[1], (255, 0, 0), 5)
 
     for obj in prediction[0]:
+        if int(obj[0]) in [77, 2, 4]:
+            t = 5
         # if int(obj[0]) not in [1, 2,4, 18,19,20]:
         #     continue
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
