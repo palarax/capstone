@@ -17,7 +17,8 @@
             "risk"
         ],
         "file1": "SSD_MODEL.h5",
-        "file": "VGG_saved.h5",
+        "file2": "VGG_saved.h5",
+        "file": "VGG_saved_unix.h5",
         "confidence_thresh": 0.6,
         "iou_threshold": 0.2
     }

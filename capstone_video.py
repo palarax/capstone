@@ -1,6 +1,7 @@
 # import os
 from timeit import default_timer as timer
 import os
+import sys
 import json
 import urllib.request as urllib2  # VoIP camera
 import logging
@@ -20,9 +21,8 @@ from XAI.keras_layers.keras_layer_DecodeDetections import DecodeDetections
 from XAI.keras_layers.keras_layer_L2Normalization import L2Normalization
 from XAI.ssd_encoder_decoder.ssd_output_decoder import decode_detections_fast
 
-from utils.utils import configure_icons
+from utils.utils import configure_icons, transparentOverlay
 from db_utils.Xaidb import Xaidb
-from centroidtracker.centroidtracker import CentroidTracker
 
 # TF debug
 # 0 = all messages are logged (default behavior)
@@ -98,51 +98,6 @@ def get_prediction(model, frame, confidence_thresh, iou_threshold, img_height=30
                                   img_width=width)
 
 
-def transparentOverlay(src, overlay, pos=(0, 0), scale=1):
-    """
-    :param src: Input Color Background Image
-    :param overlay: transparent Image (BGRA)
-    :param pos:  position where the image to be blit.
-    :param scale : scale factor of transparent image.
-    :return: Resultant Image
-    """
-    overlay = cv2.resize(overlay, (0, 0), fx=scale, fy=scale)
-    h, w, _ = overlay.shape  # Size of foreground
-    rows, cols, _ = src.shape  # Size of background Image
-    y, x = pos[0], pos[1]    # Position of foreground/overlay image
-
-    # loop over all pixels and apply the blending equation
-    for i in range(h):
-        for j in range(w):
-            if x+i >= rows or y+j >= cols:
-                continue
-            alpha = float(overlay[i][j][3]/255.0)  # read the alpha channel
-            src[x+i][y+j] = alpha*overlay[i][j][:3]+(1-alpha)*src[x+i][y+j]
-    return src
-
-
-def calculate_iou(boxA, boxB):
-    # determine the (x, y)-coordinates of the intersection rectangle
-    xA = max(boxA[0], boxB[0])
-    yA = max(boxA[1], boxB[1])
-    xB = min(boxA[2], boxB[2])
-    yB = min(boxA[3], boxB[3])
-    # compute the area of intersection rectangle
-    interArea = (xB - xA) * (yB - yA)
-
-    # compute the area of both the prediction and ground-truth
-    # rectangles
-    boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
-    boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
-
-    # compute the intersection over union by taking the intersection
-    # area and dividing it by the sum of prediction + ground-truth
-    # areas - the interesection area
-    iou = interArea / float(boxAArea + boxBArea - interArea)
-
-    # return the intersection over union value
-    return iou
-
 def isInZone(obj, z1, z2):
     w1 = obj[2]
     w2 = obj[4]
@@ -160,17 +115,16 @@ def draw_objects(prediction, frame, classes, portion=0.3):
     height, width, _ = frame.shape
     boxes = []
 
-    # Low, Medium, High, Extreme
-    classes = ['low', 'medium', 'high']
-    
     leftLine = [(int(width*portion), height), (int(width*portion), 0)]
     rightLine = [(int(width*(1-portion)), height), (int(width*(1-portion)), 0)]
 
     # detect_faces_haar(frame)
-    cv2.line(frame,leftLine[0],leftLine[1], (255,0,0),5)
-    cv2.line(frame,rightLine[0],rightLine[1], (255,0,0),5)
+    cv2.line(frame, leftLine[0], leftLine[1], (255, 0, 0), 5)
+    cv2.line(frame, rightLine[0], rightLine[1], (255, 0, 0), 5)
 
     for obj in prediction[0]:
+        # if int(obj[0]) not in [1, 2,4, 18,19,20]:
+        #     continue
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
         # [0]class/risk  [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
 
@@ -180,45 +134,48 @@ def draw_objects(prediction, frame, classes, portion=0.3):
         xmax = int(round(obj[4]))
         ymax = int(round(obj[5]))
 
-        inz = isInZone(obj, int(width*portion), (int(width*(1-portion)) ) )
-        risk = analyse_risk(obj[0], obj[6], obj[7], inz)
-        # if inz:
-        #     risk = 'high'
-        # else:
-        #     risk = 'medium'
+        inz = isInZone(obj, int(width*portion), (int(width*(1-portion))))
+        risk, danger_level = analyse_risk(obj[0], obj[6], obj[7], inz)
 
-        icon = ICONS[risk]
-        color = db.get_signal(risk)
-        labels = ['background','person','bicycle','car','motorcycle','airplane','bus','train','truck','boat','traffic light','fire hydrant','stop sign','parking meter','bench','bird','cat','dog','horse','sheep','cow','elephant','bear','zebra','giraffe','backpack','umbrella','handbag','tie','suitcase','frisbee','skis','snowboard','sports ball','kite','baseball bat','baseball glove','skateboard','surfboard','tennis racket','bottle','wine glass','cup','fork','knife','spoon','bowl','banana','apple','sandwich','orange','broccoli','carrot','hot dog','pizza','donut','cake','chair','couch','potted plant','bed','dining table','toilet','tv','laptop','mouse','remote','keyboard','cell phone','microwave','oven','toaster','sink','refrigerator','book','clock','vase','scissors','teddy bear','hair drier','toothbrush']
-        risk = labels[int(obj[0])]# TODO Remove
+        if danger_level == 1:
+            # icon = ICONS["low"]
+            icon = "-1"
+            color = db.get_signal("low")
+        elif danger_level == 2:
+            icon = ICONS["medium"]
+            color = db.get_signal("medium")
+        else:
+            icon = ICONS["high"]
+            color = db.get_signal("high")
 
-        # boxes.append([xmin, ymin, xmax, ymax])  # record obj box
-
-        logging.debug("Class[%s] Conf[%.2f] xmin[%d] ymin[%d] xmax[%d] ymax[%d]",
-                      risk, obj[1], xmin, ymin, xmax, ymax)
+        logging.debug("Class[%s] Conf[%.2f] Risk [%s]",
+                      obj[0], obj[1], risk)
         logging.debug("Distance [%f] Portion[%f]", obj[6], obj[7])
 
         conf = float("{:.2f}".format(obj[1]))
-        label = '{}: {:.2f}'.format(
-            risk, obj[1])
+        label = '{}: {}'.format(
+            risk, conf)
 
         cv2.rectangle(frame, (xmin, ymin), (xmax, ymax),
                       color, 3)
 
-        text_top = (xmin, ymin-10)
-        text_bot = (xmin + 80, ymin + 5)
-        text_pos = (xmin + 5, ymin)
+        text_top = (xmin, ymin+20)
+        # text_bot = (xmin + 150, ymin - 10)
+        text_bot = (xmin + (xmax-xmin), ymin)
+        text_pos = (xmin, ymin+10)
         cv2.rectangle(frame, text_top, text_bot, color, -1)
         cv2.putText(frame, label, text_pos,
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.40, (0, 0, 0), 1)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.40, (0, 0, 0), 2)
 
-        if risk == 'low':
+        if danger_level == 1:
+            # if True:
             continue
 
         x_offset = xmax - 50
-        y_offset = ymin - 50
+        y_offset = ymin - 60
 
-        frame = transparentOverlay(frame, icon, (x_offset, y_offset))
+        if icon != "-1":
+            frame = transparentOverlay(frame, icon, pos=(x_offset, y_offset))
 
     return boxes
 
@@ -238,23 +195,27 @@ def detect_faces_haar(frame):
     # return frame
 
 
-def analyse_risk(id_class, distance, ratio, in_zone,speed=50):
+def analyse_risk(id_class, distance, ratio, in_zone):
 
     # Low, Medium, High, Extreme
-    classes = ['low', 'medium', 'high']
+    classes = ['Low Risk', 'High Risk', 'Danger']
     # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
-    risk = 'medium'
-    stp_dist = 300
-    if in_zone:
-        return 'high'
-        
-    if stp_dist > distance:
-        return 'high'
-    
-    if float(ratio) > 0.20:
-        return 'high'
+    risk = 'Low Risk'
+    danger_level = 1
 
-    return risk
+    if float(ratio) > 0.12:
+        danger_level = 2
+        risk = "High risk of collision"
+
+    if distance > 400 or float(ratio) > 0.5:
+        danger_level = 3
+        risk = "DANGER: Too close"
+
+    if in_zone:
+        danger_level = 4
+        risk = "DANGER: PERSON IN FRONT"
+
+    return risk, danger_level
 
 
 def process_video(model, config, video_path=0, skip=1):
@@ -272,49 +233,50 @@ def process_video(model, config, video_path=0, skip=1):
     accum_time, curr_fps = 0, 0
     fps = "FPS: ??"
     prev_time = timer()
+    global bytes
 
     vid = cv2.VideoCapture(video_path)
-    if not vid.isOpened():
-        raise IOError("Couldn't open webcam or video")
-
     logging.info("Starting Video Stream")
+    if not vid.isOpened():
+        video_path = "10.0.0.28:8080"
 
-    # ==============================
-    # Multi tracker init
-    # trackers = cv2.MultiTracker_create()
-    # ct = CentroidTracker()
-    # ==================================
+        logging.debug("Couldn't open local webcam or video")
+        stream = 'http://' + video_path + '/video'
+        logging.debug('Streaming from: %s', stream)
+        # Open ByteStram
+        stream = urllib2.urlopen(stream)
+        bytes = bytes()
 
-    # vid.set(1, 100)  # Skip first few frames cause they are garbage
+    vid.set(1, 100)  # Skip first few frames cause they are garbage
     while True:
-        return_value, frame = vid.read()
+        frame = None
+        if not vid.isOpened():
+            bytes += stream.read(1024)
+            a = bytes.find(b'\xff\xd8')
+            b = bytes.find(b'\xff\xd9')
+            if a != -1 and b != -1:
+                jpg = bytes[a:b+2]
+                bytes = bytes[b+2:]
+                frame = cv2.imdecode(np.fromstring(
+                    jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+            else:
+                continue
+        else:
+            return_value, frame = vid.read()
+
+            if not return_value:
+                break
 
         # frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5) # resize both axis by half
-        if not return_value:
-            break
-
         frame = cv2.resize(frame, (1200, 900))
 
-        if int(vid.get(cv2.CAP_PROP_POS_FRAMES)) % skip == 0:  # every 3 frames
+        # if int(vid.get(cv2.CAP_PROP_POS_FRAMES)) % skip == 0:  # every 3 frames
+        if True:
             predictions = get_prediction(
                 model, frame, confidence_thresh, iou_threshold, img_height, img_width)
             # TODO: implement tracking
 
-            boxes = draw_objects(predictions, frame, class_labels)
-            # get centroid point of box
-            # cX = int((startX + endX) / 2.0)
-            # cY = int((startY + endY) / 2.0)
-            # objects = ct.update(boxes)
-            # loop over the tracked objects
-            # for (objectID, centroid) in objects.items():
-            #     # draw both the ID of the object and the centroid of the
-            #     # object on the output frame
-            #     text = "ID {}".format(objectID)
-            #     cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
-            #                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            #     logging.debug(centroid)
-            #     cv2.circle(
-            #         frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+            draw_objects(predictions, frame, class_labels)
 
         # Calculate and draw FPS
         accum_time, curr_fps, prev_time, fps = calculate_fps(
@@ -326,7 +288,7 @@ def process_video(model, config, video_path=0, skip=1):
 
         cv2.imshow("SSD results", frame)
 
-    vid.release()
+    # vid.release()
     cv2.destroyAllWindows()
 
 
@@ -344,8 +306,8 @@ def main(log_config="configuration/log_config.json", main_config="configuration/
     db = Xaidb(config["database"]["name"])
     configure_icons(db, ICONS, config["icons_dimensions"])
 
-    process_video(model, config["model_processing"])
-    # process_video(model, config["model_processing"], config["video_path"])
+    # process_video(model, config["model_processing"])
+    process_video(model, config["model_processing"], config["video_path"])
 
 
 if __name__ == "__main__":

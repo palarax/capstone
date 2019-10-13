@@ -4,7 +4,7 @@ import numpy as np
 import sys
 
 # Input the URL shown by IP Webcam
-url = "10.0.0.34:8080"
+url = "10.0.0.28:8080"
 stream = 'http://' + url + '/video'
 print('Streaming from: ' + stream)
 
