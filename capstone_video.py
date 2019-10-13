@@ -108,10 +108,9 @@ def isInZone(obj, z1, z2):
     return False
 
 
-def draw_objects(prediction, frame, classes, portion=0.3):
+def draw_objects(prediction, frame, portion=0.3):
     '''Draw objects in image frame
     '''
-    class_colors = [[0, 0, 0], [0, 128, 255], [0, 0, 255]]
     height, width, _ = frame.shape
     boxes = []
 
@@ -123,10 +122,10 @@ def draw_objects(prediction, frame, classes, portion=0.3):
     cv2.line(frame, rightLine[0], rightLine[1], (255, 0, 0), 5)
 
     for obj in prediction[0]:
-        if int(obj[0]) in [77, 2, 4]:
-            t = 5
-        # if int(obj[0]) not in [1, 2,4, 18,19,20]:
-        #     continue
+        if int(obj[0]) not in [1,2,3]:
+            t =5
+            continue
+
         # Transform the predicted bounding boxes for the 300x300 image to the original image dimensions.
         # [0]class/risk  [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
 
@@ -199,8 +198,6 @@ def detect_faces_haar(frame):
 
 def analyse_risk(id_class, distance, ratio, in_zone):
 
-    # Low, Medium, High, Extreme
-    classes = ['Low Risk', 'High Risk', 'Danger']
     # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
     risk = 'Low Risk'
     danger_level = 1
@@ -229,7 +226,6 @@ def process_video(model, config, video_path=0, skip=1):
     iou_threshold = config["iou_threshold"]
     img_height = config["img_height"]
     img_width = config["img_width"]
-    class_labels = config["labels"]
 
     # Setup values to calculate FPS
     accum_time, curr_fps = 0, 0
@@ -249,19 +245,22 @@ def process_video(model, config, video_path=0, skip=1):
         stream = urllib2.urlopen(stream)
         bytes = bytes()
 
-    vid.set(1, 100)  # Skip first few frames cause they are garbage
+    # vid.set(1, 100)  # Skip first few frames cause they are garbage
     while True:
         frame = None
         if not vid.isOpened():
-            bytes += stream.read(1024)
-            a = bytes.find(b'\xff\xd8')
-            b = bytes.find(b'\xff\xd9')
-            if a != -1 and b != -1:
-                jpg = bytes[a:b+2]
-                bytes = bytes[b+2:]
-                frame = cv2.imdecode(np.fromstring(
-                    jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-            else:
+            try:
+                bytes += stream.read(1024)
+                a = bytes.find(b'\xff\xd8')
+                b = bytes.find(b'\xff\xd9')
+                if a != -1 and b != -1:
+                    jpg = bytes[a:b+2]
+                    bytes = bytes[b+2:]
+                    frame = cv2.imdecode(np.fromstring(
+                        jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                else:
+                    continue
+            except:
                 continue
         else:
             return_value, frame = vid.read()
@@ -278,7 +277,7 @@ def process_video(model, config, video_path=0, skip=1):
                 model, frame, confidence_thresh, iou_threshold, img_height, img_width)
             # TODO: implement tracking
 
-            draw_objects(predictions, frame, class_labels)
+            draw_objects(predictions, frame)
 
         # Calculate and draw FPS
         accum_time, curr_fps, prev_time, fps = calculate_fps(
@@ -308,8 +307,8 @@ def main(log_config="configuration/log_config.json", main_config="configuration/
     db = Xaidb(config["database"]["name"])
     configure_icons(db, ICONS, config["icons_dimensions"])
 
-    # process_video(model, config["model_processing"])
-    process_video(model, config["model_processing"], config["video_path"])
+    process_video(model, config["model_processing"])
+    # process_video(model, config["model_processing"], config["video_path"])
 
 
 if __name__ == "__main__":
