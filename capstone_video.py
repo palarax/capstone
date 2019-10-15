@@ -137,15 +137,26 @@ def draw_objects(prediction, frame, portion=0.4):
         inz = isInZone(obj, int(width*portion), (int(width*(1-portion))))
         risk, danger_level = analyse_risk(
             obj[0], obj[6], obj[7], inz, (obj[2]-int(width*portion)),(obj[0]-int(width*(1-portion))))
+        message = ''
 
         if danger_level == 1:
             # icon = ICONS["low"]
+            message = ''
             icon = "-1"
             color = db.get_signal("low")
         elif danger_level == 2:
+            message = "High risk of collision"
             icon = ICONS["medium"]
             color = db.get_signal("medium")
+        elif danger_level == 3:
+            message = "Dangerour distance to object"
+            icon = ICONS["high"]
+            color = db.get_signal("high")
         else:
+            if obj[0] in [2, 4]:
+                message = "Motorbike in front"
+            else:
+                message = "Person in front"
             icon = ICONS["high"]
             color = db.get_signal("high")
 
@@ -160,13 +171,14 @@ def draw_objects(prediction, frame, portion=0.4):
         cv2.rectangle(frame, (xmin, ymin), (xmax, ymax),
                       color, 3)
 
-        text_top = (xmin, ymin+20)
+        text_top = (xmin, ymin+30)
         # text_bot = (xmin + 150, ymin - 10)
         text_bot = (xmin + (xmax-xmin), ymin)
         text_pos = (xmin, ymin+10)
         cv2.rectangle(frame, text_top, text_bot, color, -1)
         cv2.putText(frame, label, text_pos,
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.40, (0, 0, 0), 2)
+                    cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.60, (0, 0, 0), 2)
+        cv2.putText(frame, message, (xmin, ymin+25), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.60, (0, 0, 0), 1)
 
         if danger_level == 1:
             # if True:
@@ -199,27 +211,23 @@ def detect_faces_haar(frame):
 def analyse_risk(id_class, distance, ratio, in_zone, dist_left, dist_right):
 
     # [0]class   [1]conf  [2]xmin   [3]ymin   [4]xmax   [5]ymax  [6]distance [7] ratio in screen
-    risk = 'Low Risk'
+    risk = 'LOW RISK'
     danger_level = 1
-    if id_class in [2, 4]:
-        identified = 'motorbike'
-    else:
-        identified = 'person'
 
     if float(ratio) > 0.15:
         danger_level = 2
-        risk = "WARNING: High risk of collision"
+        risk = "WARNING"
     elif not in_zone and (abs(dist_left)>40 and abs(dist_left)>40):
         danger_level = 2
-        risk = "WARNING: High risk of collision"
+        risk = "WARNING"
 
     if distance < 300 or float(ratio) > 0.5:
         danger_level = 3
-        risk = "DANGER: Too close"
+        risk = "DANGER"
 
     if in_zone:
         danger_level = 4
-        risk = "DANGER: "+identified+" IN FRONT"
+        risk = "EXTREME DANGER:"
 
     return risk, danger_level
 
@@ -241,6 +249,9 @@ def process_video(model, config, video_path=0, skip=1):
     global bytes
 
     vid = cv2.VideoCapture(video_path)
+
+    # out = cv2.VideoWriter('capstone_ilya.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 20, (1200,900))
+
     logging.info("Starting Video Stream")
     if not vid.isOpened():
         video_path = "10.0.0.28:8080"
@@ -252,7 +263,7 @@ def process_video(model, config, video_path=0, skip=1):
         stream = urllib2.urlopen(stream)
         bytes = bytes()
 
-    vid.set(1, 220)  # Skip first few frames cause they are garbage
+    vid.set(1, 280)  # Skip first few frames cause they are garbage
     while True:
         frame = None
         if not vid.isOpened():
@@ -289,14 +300,17 @@ def process_video(model, config, video_path=0, skip=1):
         # Calculate and draw FPS
         accum_time, curr_fps, prev_time, fps = calculate_fps(
             accum_time, curr_fps, prev_time, fps, frame)
-
+        
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
 
+        cv2.cvtColor(frame,cv2.COLOR_RGB2BGR)
+        # out.write(frame)
         cv2.imshow("SSD results", frame)
 
-    # vid.release()
+    vid.release()
+    # out.release()
     cv2.destroyAllWindows()
 
 
